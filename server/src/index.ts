@@ -1,4 +1,4 @@
-﻿import 'dotenv/config'
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -11,10 +11,12 @@ import { prisma } from '@/lib/prisma'
 import { errorHandler, notFound } from '@/middleware/error.middleware'
 import { config } from '@/config'
 
-// Route modules
+// ─── Route modules ────────────────────────────────────────────────────────────
 import authRoutes from '@/modules/auth/auth.routes'
 import formsRoutes from '@/modules/forms/forms.routes'
-import submissionsRoutes from '@/modules/submissions/submissions.routes'
+import versionsRoutes from '@/modules/versions/versions.routes'
+import workflowRoutes from '@/modules/workflow/workflow.routes'
+import publicRoutes from '@/modules/public/public.routes'
 
 const app = express()
 
@@ -54,7 +56,9 @@ app.get('/api/health', (_req, res) => {
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
 app.use('/api/forms', formsRoutes)
-app.use('/api/submissions', submissionsRoutes)
+app.use('/api/forms', versionsRoutes)    // nested: /api/forms/:id/versions
+app.use('/api/forms', workflowRoutes)    // nested: /api/forms/:id/submit-review|approve|etc.
+app.use('/api/public', publicRoutes)     // /api/public/forms/:slug
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound)
