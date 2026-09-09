@@ -7,21 +7,21 @@ import { sendSuccess, sendError } from '@/utils/response'
 
 const router = Router()
 
-// ─── Validation Schemas ───────────────────────────────────────────────────────
+
 
 const updateVersionSchema = z.object({
-  schema: z.record(z.unknown()),
+  schema: z.any(),
 })
 
-// ─── POST /api/forms/:id/versions — Create new draft version from current ─────
+
 router.post('/:id/versions', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const form = await prisma.form.findFirst({
-      where: { id: req.params.id, createdBy: req.user!.id, deletedAt: null },
+      where: { id: req.params.id as string, createdBy: req.user!.id, deletedAt: null },
     })
     if (!form) return sendError(res, 'Form not found', 404)
 
-    // Get current version to clone schema from
+    
     let baseSchema: Record<string, unknown> = {
       id: form.id,
       version: 1,
@@ -43,7 +43,7 @@ router.post('/:id/versions', authenticate, async (req: AuthRequest, res: Respons
       if (current) baseSchema = current.schema as Record<string, unknown>
     }
 
-    // Get next version number
+    
     const latestVersion = await prisma.formVersion.findFirst({
       where: { formId: form.id },
       orderBy: { versionNumber: 'desc' },
@@ -59,7 +59,7 @@ router.post('/:id/versions', authenticate, async (req: AuthRequest, res: Respons
       },
     })
 
-    // Update form's currentVersionId to new draft
+    
     await prisma.form.update({
       where: { id: form.id },
       data: { currentVersionId: newVersion.id },
@@ -72,16 +72,16 @@ router.post('/:id/versions', authenticate, async (req: AuthRequest, res: Respons
   }
 })
 
-// ─── GET /api/forms/:id/versions — List all versions ─────────────────────────
+
 router.get('/:id/versions', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const form = await prisma.form.findFirst({
-      where: { id: req.params.id, createdBy: req.user!.id, deletedAt: null },
+      where: { id: req.params.id as string, createdBy: req.user!.id, deletedAt: null },
     })
     if (!form) return sendError(res, 'Form not found', 404)
 
     const versions = await prisma.formVersion.findMany({
-      where: { formId: req.params.id },
+      where: { formId: req.params.id as string as string },
       orderBy: { versionNumber: 'desc' },
       select: {
         id: true,
@@ -104,16 +104,16 @@ router.get('/:id/versions', authenticate, async (req: AuthRequest, res: Response
   }
 })
 
-// ─── GET /api/forms/:id/versions/:versionId — Get specific version ────────────
+
 router.get('/:id/versions/:versionId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const form = await prisma.form.findFirst({
-      where: { id: req.params.id, createdBy: req.user!.id, deletedAt: null },
+      where: { id: req.params.id as string, createdBy: req.user!.id, deletedAt: null },
     })
     if (!form) return sendError(res, 'Form not found', 404)
 
     const version = await prisma.formVersion.findFirst({
-      where: { id: req.params.versionId, formId: req.params.id },
+      where: { id: req.params.versionId as string, formId: req.params.id as string as string },
       include: {
         creator: { select: { id: true, name: true, email: true } },
       },
@@ -127,7 +127,7 @@ router.get('/:id/versions/:versionId', authenticate, async (req: AuthRequest, re
   }
 })
 
-// ─── PATCH /api/forms/:id/versions/:versionId — Autosave schema ──────────────
+
 router.patch(
   '/:id/versions/:versionId',
   authenticate,
@@ -135,22 +135,22 @@ router.patch(
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await prisma.form.findFirst({
-        where: { id: req.params.id, createdBy: req.user!.id, deletedAt: null },
+        where: { id: req.params.id as string, createdBy: req.user!.id, deletedAt: null },
       })
       if (!form) return sendError(res, 'Form not found', 404)
 
       const version = await prisma.formVersion.findFirst({
-        where: { id: req.params.versionId, formId: req.params.id },
+        where: { id: req.params.versionId as string, formId: req.params.id as string as string },
       })
       if (!version) return sendError(res, 'Version not found', 404)
 
-      // Only DRAFT versions can be edited
+      
       if (version.status !== 'DRAFT') {
         return sendError(res, 'Only DRAFT versions can be edited', 400)
       }
 
       const updated = await prisma.formVersion.update({
-        where: { id: req.params.versionId },
+        where: { id: req.params.versionId as string },
         data: { schema: req.body.schema },
       })
 

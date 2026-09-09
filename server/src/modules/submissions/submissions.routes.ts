@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express'
+import { Router, Request, Response } from 'express'
 import { Submission } from '@/models/Submission.model'
 import { prisma } from '@/lib/prisma'
 import { authenticate, AuthRequest } from '@/middleware/auth.middleware'
@@ -10,7 +10,7 @@ const router = Router()
 router.post('/:slug', async (req: Request, res: Response) => {
   try {
     const form = await prisma.form.findUnique({
-      where: { slug: req.params.slug },
+      where: { slug: req.params.slug as string },
     })
     if (!form || form.status !== 'PUBLISHED') {
       return sendError(res, 'Form not found or not published', 404)
@@ -41,11 +41,11 @@ router.get('/form/:formId', authenticate, async (req: AuthRequest, res: Response
     const skip = (page - 1) * limit
 
     const [submissions, total] = await Promise.all([
-      Submission.find({ formId: req.params.formId })
+      Submission.find({ formId: req.params.formId as string })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Submission.countDocuments({ formId: req.params.formId }),
+      Submission.countDocuments({ formId: req.params.formId as string }),
     ])
 
     return sendPaginated(res, submissions, total, page, limit)

@@ -6,20 +6,20 @@ import { sendSuccess, sendError } from '@/utils/response'
 
 const router = Router()
 
-// ─── Per-form rate limiter: 10 submissions per IP per hour ───────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Per-form rate limiter: 10 submissions per IP per hour Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const submitLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
   keyGenerator: (req: Request) => {
     // Key by IP + slug combination
-    return `${req.ip}-${req.params.slug}`
+    return `${req.ip}-${req.params.slug as string}`
   },
   message: { success: false, message: 'Too many submissions. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
-// ─── Helper: generate reference number like FORM-2026-0001 ───────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Helper: generate reference number like FORM-2026-0001 Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 const generateReferenceNumber = async (formSlug: string): Promise<string> => {
   const year = new Date().getFullYear()
   const count = await Submission.countDocuments({
@@ -33,12 +33,12 @@ const generateReferenceNumber = async (formSlug: string): Promise<string> => {
   return `FORM-${year}-${seq}`
 }
 
-// ─── GET /api/public/forms/:slug ─────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ GET /api/public/forms/:slug Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.get('/forms/:slug', async (req: Request, res: Response) => {
   try {
     const form = await prisma.form.findFirst({
       where: {
-        slug: req.params.slug,
+        slug: req.params.slug as string,
         status: 'ACTIVE',
         deletedAt: null,
       },
@@ -96,12 +96,12 @@ router.get('/forms/:slug', async (req: Request, res: Response) => {
   }
 })
 
-// ─── POST /api/public/forms/:slug/submit ─────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ POST /api/public/forms/:slug/submit Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/forms/:slug/submit', submitLimiter, async (req: Request, res: Response) => {
   try {
     const form = await prisma.form.findFirst({
       where: {
-        slug: req.params.slug,
+        slug: req.params.slug as string,
         status: 'ACTIVE',
         deletedAt: null,
       },

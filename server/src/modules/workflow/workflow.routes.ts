@@ -6,7 +6,7 @@ import { AuditLog } from '@/models/AuditLog.model'
 
 const router = Router()
 
-// ─── Helper: log audit event ──────────────────────────────────────────────────
+// â”€â”€â”€ Helper: log audit event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const logAudit = async (
   userId: string,
@@ -25,7 +25,7 @@ const logAudit = async (
   })
 }
 
-// ─── Helper: record FormApproval ──────────────────────────────────────────────
+// â”€â”€â”€ Helper: record FormApproval â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const recordApproval = async (
   formId: string,
@@ -39,7 +39,7 @@ const recordApproval = async (
   })
 }
 
-// ─── Helper: get form with current version (authorized) ───────────────────────
+// â”€â”€â”€ Helper: get form with current version (authorized) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const getForm = async (formId: string) => {
   return prisma.form.findFirst({
@@ -48,15 +48,15 @@ const getForm = async (formId: string) => {
   })
 }
 
-// ─── POST /api/forms/:id/submit-review ───────────────────────────────────────
-// DRAFT → UNDER_REVIEW  (FORM_BUILDER)
+// â”€â”€â”€ POST /api/forms/:id/submit-review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// DRAFT â†’ UNDER_REVIEW  (FORM_BUILDER)
 router.post(
   '/:id/submit-review',
   authenticate,
   authorize('FORM_BUILDER', 'ADMIN', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.createdBy !== req.user!.id && req.user!.role !== 'SUPER_ADMIN') {
         return sendError(res, 'Forbidden', 403)
@@ -89,15 +89,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/approve ─────────────────────────────────────────────
-// UNDER_REVIEW → APPROVED  (ADMIN / APPROVER)
+// â”€â”€â”€ POST /api/forms/:id/approve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// UNDER_REVIEW â†’ APPROVED  (ADMIN / APPROVER)
 router.post(
   '/:id/approve',
   authenticate,
   authorize('ADMIN', 'APPROVER', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status !== 'UNDER_REVIEW') {
         return sendError(res, `Cannot approve from status: ${form.status}`, 400)
@@ -125,15 +125,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/reject ──────────────────────────────────────────────
-// UNDER_REVIEW → DRAFT with comment  (ADMIN / APPROVER)
+// â”€â”€â”€ POST /api/forms/:id/reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// UNDER_REVIEW â†’ DRAFT with comment  (ADMIN / APPROVER)
 router.post(
   '/:id/reject',
   authenticate,
   authorize('ADMIN', 'APPROVER', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status !== 'UNDER_REVIEW') {
         return sendError(res, `Cannot reject from status: ${form.status}`, 400)
@@ -161,15 +161,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/publish ─────────────────────────────────────────────
-// APPROVED → PUBLISHED  (ADMIN)
+// â”€â”€â”€ POST /api/forms/:id/publish â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// APPROVED â†’ PUBLISHED  (ADMIN)
 router.post(
   '/:id/publish',
   authenticate,
   authorize('ADMIN', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status !== 'APPROVED') {
         return sendError(res, `Cannot publish from status: ${form.status}`, 400)
@@ -199,15 +199,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/activate ────────────────────────────────────────────
-// PUBLISHED → ACTIVE  (ADMIN)
+// â”€â”€â”€ POST /api/forms/:id/activate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// PUBLISHED â†’ ACTIVE  (ADMIN)
 router.post(
   '/:id/activate',
   authenticate,
   authorize('ADMIN', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status !== 'PUBLISHED') {
         return sendError(res, `Cannot activate from status: ${form.status}`, 400)
@@ -231,15 +231,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/deactivate ──────────────────────────────────────────
-// ACTIVE → DEACTIVATED  (ADMIN)
+// â”€â”€â”€ POST /api/forms/:id/deactivate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ACTIVE â†’ DEACTIVATED  (ADMIN)
 router.post(
   '/:id/deactivate',
   authenticate,
   authorize('ADMIN', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status !== 'ACTIVE') {
         return sendError(res, `Cannot deactivate from status: ${form.status}`, 400)
@@ -263,15 +263,15 @@ router.post(
   }
 )
 
-// ─── POST /api/forms/:id/archive ─────────────────────────────────────────────
-// Any status → ARCHIVED  (ADMIN / SUPER_ADMIN)
+// â”€â”€â”€ POST /api/forms/:id/archive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Any status â†’ ARCHIVED  (ADMIN / SUPER_ADMIN)
 router.post(
   '/:id/archive',
   authenticate,
   authorize('ADMIN', 'SUPER_ADMIN'),
   async (req: AuthRequest, res: Response) => {
     try {
-      const form = await getForm(req.params.id)
+      const form = await getForm(req.params.id as string)
       if (!form) return sendError(res, 'Form not found', 404)
       if (form.status === 'ARCHIVED') {
         return sendError(res, 'Form is already archived', 400)
