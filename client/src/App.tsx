@@ -5,6 +5,7 @@ import { LoginPage } from './app/auth/LoginPage'
 import { RegisterPage } from './app/auth/RegisterPage'
 import { DashboardPage } from './app/dashboard/DashboardPage'
 import { BuilderPage } from './app/forms/BuilderPage'
+import { SubmissionsPage } from './app/submissions/SubmissionsPage'
 import { PreviewPage } from './app/forms/PreviewPage'
 import { PublicFormPage } from './app/public/PublicFormPage'
 
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/forms/:id/builder" element={<ProtectedRoute><BuilderPage /></ProtectedRoute>} />
+            <Route path="/forms/:id/submissions" element={<ProtectedRoute><SubmissionsPage /></ProtectedRoute>} />
             <Route path="/forms/:id/preview" element={<ProtectedRoute><PreviewPage /></ProtectedRoute>} />
             <Route path="/forms/:slug" element={<PublicFormPage />} />
           </Routes>

@@ -1,5 +1,8 @@
-import { ArrowLeft, Undo2, Redo2, Eye, Save, Send, Globe } from 'lucide-react'
+import { ArrowLeft, Undo2, Redo2, Eye, Save, Send, CheckCircle, Globe, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Workflow } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 
 interface BuilderHeaderProps {
   formId: string
@@ -13,21 +16,26 @@ interface BuilderHeaderProps {
   onRedo: () => void
   onPreview: () => void
   onSave: () => void
+  onWorkflowAction?: (action: 'submit' | 'approve' | 'publish' | 'activate') => void
+  onOpenLogic?: () => void
+  isWorkflowLoading?: boolean
 }
 
 export function BuilderHeader({
-  title, status, isSaving, isDirty, canUndo, canRedo, onUndo, onRedo, onPreview, onSave
+  title, status, isSaving, isDirty, canUndo, canRedo, onUndo, onRedo, onPreview, onSave, onWorkflowAction, isWorkflowLoading
 }: BuilderHeaderProps) {
+  const navigate = useNavigate()
+  
   return (
     <header className="flex items-center justify-between px-4 h-14 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="text-gray-500 hover:text-gray-900">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm">{title || 'Untitled Form'}</span>
-            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full ${status === 'DRAFT' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600`}>
               {status}
             </span>
           </div>
@@ -47,15 +55,36 @@ export function BuilderHeader({
           </Button>
         </div>
         
+        <Button variant="outline" size="sm" onClick={onOpenLogic} className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50">
+          <Workflow className="h-4 w-4" /> Logic Rules
+        </Button>
         <Button variant="outline" size="sm" onClick={onPreview} className="gap-2">
           <Eye className="h-4 w-4" /> Preview
         </Button>
         <Button variant="outline" size="sm" onClick={onSave} disabled={!isDirty || isSaving} className="gap-2">
           <Save className="h-4 w-4" /> Save
         </Button>
-        <Button size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-          <Send className="h-4 w-4" /> Submit for Review
-        </Button>
+        
+        {status === 'DRAFT' && (
+          <Button size="sm" onClick={() => onWorkflowAction?.('submit')} disabled={isWorkflowLoading} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+            <Send className="h-4 w-4" /> Submit for Review
+          </Button>
+        )}
+        {status === 'UNDER_REVIEW' && (
+          <Button size="sm" onClick={() => onWorkflowAction?.('approve')} disabled={isWorkflowLoading} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+            <CheckCircle className="h-4 w-4" /> Approve
+          </Button>
+        )}
+        {status === 'APPROVED' && (
+          <Button size="sm" onClick={() => onWorkflowAction?.('publish')} disabled={isWorkflowLoading} className="gap-2 bg-purple-600 hover:bg-purple-700 text-white">
+            <Globe className="h-4 w-4" /> Publish
+          </Button>
+        )}
+        {status === 'PUBLISHED' && (
+          <Button size="sm" onClick={() => onWorkflowAction?.('activate')} disabled={isWorkflowLoading} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+            <Play className="h-4 w-4" /> Activate Form
+          </Button>
+        )}
       </div>
     </header>
   )

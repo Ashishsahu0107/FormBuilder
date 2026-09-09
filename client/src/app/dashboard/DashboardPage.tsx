@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, MoreVertical, Edit2, Eye, Trash, LogOut } from 'lucide-react'
+import { Plus, MoreVertical, Edit2, Eye, Trash, LogOut, Inbox, Share2 } from 'lucide-react'
+import { ShareDialog } from '@/features/form-builder/components/ShareDialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export function DashboardPage() {
@@ -17,6 +18,7 @@ export function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [shareSlug, setShareSlug] = useState<string | null>(null)
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['forms', statusFilter],
@@ -148,6 +150,7 @@ export function DashboardPage() {
           </div>
         )}
       </main>
+      {shareSlug && <ShareDialog formSlug={shareSlug} isOpen={true} onClose={() => setShareSlug(null)} />}
     </div>
   )
 }

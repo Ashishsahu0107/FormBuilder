@@ -10,12 +10,14 @@ import { useState } from 'react'
 import { FIELD_REGISTRY } from '../constants/field-registry'
 
 interface FormBuilderProps {
+  onWorkflowAction?: (action: 'submit' | 'approve' | 'publish' | 'activate') => void
+  isWorkflowLoading?: boolean
   form: Form
   initialSchema: FormSchema
   onSave: (schema: FormSchema) => Promise<void>
 }
 
-export function FormBuilder({ form, initialSchema, onSave }: FormBuilderProps) {
+export function FormBuilder({ form, initialSchema, onSave, onWorkflowAction, isWorkflowLoading }: FormBuilderProps) {
   const builder = useFormBuilder(initialSchema)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [activeDragType, setActiveDragType] = useState<string | null>(null)
@@ -77,6 +79,8 @@ export function FormBuilder({ form, initialSchema, onSave }: FormBuilderProps) {
           onUndo={builder.undo}
           onRedo={builder.redo}
           onPreview={() => window.open(`/forms/${form.id}/preview`, '_blank')}
+          onWorkflowAction={onWorkflowAction}
+          isWorkflowLoading={isWorkflowLoading}
           onSave={async () => {
             builder.setSaving(true)
             await onSave(builder.schema)

@@ -200,11 +200,72 @@ export function FieldRenderer({ field, value, onChange, mode = 'public', error }
             {Array.from({ length: max }).map((_, i) => (
               <button key={i} type="button" onClick={() => onChange?.(i + 1)}
                 className={`text-2xl ${i < ratingVal ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-colors`}>
-                ÃƒÂ¢Ã‹Å“Ã¢â‚¬Â¦
+                ÃƒÆ’Ã‚Â¢Ãƒâ€¹Ã…â€œÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦
               </button>
             ))}
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+      )
+
+        case 'repeater':
+      const items = Array.isArray(value) ? value : []
+      const subFields = (field.config?.fields as FormField[]) || []
+      return (
+        <div className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
+          <label className="block text-sm font-medium text-gray-700">
+            {field.label}{field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          {field.description && <p className="text-xs text-gray-500">{field.description}</p>}
+          <div className="space-y-4">
+            {items.map((item: any, index: number) => (
+              <div key={index} className="flex gap-4 items-start bg-white p-4 border border-gray-200 rounded-md relative">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {subFields.map(subField => (
+                    <div key={subField.id}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{subField.label}</label>
+                      <input 
+                        type={subField.type === 'number' ? 'number' : 'text'}
+                        className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={item[subField.name] || ''}
+                        disabled={mode === 'preview' || field.disabled}
+                        readOnly={mode === 'canvas'}
+                        onChange={e => {
+                          const newItems = [...items]
+                          newItems[index] = { ...newItems[index], [subField.name]: e.target.value }
+                          onChange?.(newItems)
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {subFields.length === 0 && <span className="text-xs text-gray-400">Configure fields in properties</span>}
+                </div>
+                {mode !== 'canvas' && (
+                  <button type="button" onClick={() => {
+                    const newItems = items.filter((_, i) => i !== index)
+                    onChange?.(newItems)
+                  }} className="text-red-500 hover:text-red-700 font-bold p-1">&times;</button>
+                )}
+              </div>
+            ))}
+          </div>
+          {mode !== 'canvas' && (
+            <button type="button" onClick={() => onChange?.([...items, {}])} className="text-sm text-blue-600 font-medium hover:underline">
+              + Add Item
+            </button>
+          )}
+        </div>
+      )
+
+    case 'calculation':
+      return (
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">
+            {field.label}
+          </label>
+          <div className="w-full bg-gray-100 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-800 font-mono">
+            {value !== undefined ? String(value) : (mode === 'canvas' ? (field.config?.formula as string) || 'No formula' : '0')}
+          </div>
         </div>
       )
 
