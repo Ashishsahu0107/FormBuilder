@@ -5,9 +5,9 @@ import { BuilderHeader } from './BuilderHeader'
 import { FieldLibrary } from './FieldLibrary'
 import { FormCanvas } from './FormCanvas'
 import { PropertiesPanel } from './PropertiesPanel'
+import { LogicDialog } from './LogicDialog'
 import type { FormSchema, Form } from '../types/schema'
 import { useState } from 'react'
-import { FIELD_REGISTRY } from '../constants/field-registry'
 
 interface FormBuilderProps {
   onWorkflowAction?: (action: 'submit' | 'approve' | 'publish' | 'activate') => void
@@ -19,6 +19,7 @@ interface FormBuilderProps {
 
 export function FormBuilder({ form, initialSchema, onSave, onWorkflowAction, isWorkflowLoading }: FormBuilderProps) {
   const builder = useFormBuilder(initialSchema)
+  const [isLogicOpen, setIsLogicOpen] = useState(false)
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [activeDragType, setActiveDragType] = useState<string | null>(null)
 
@@ -68,7 +69,14 @@ export function FormBuilder({ form, initialSchema, onSave, onWorkflowAction, isW
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-screen bg-gray-50 overflow-hidden text-gray-900">
-        <BuilderHeader
+        <LogicDialog 
+        isOpen={isLogicOpen} 
+        onClose={() => setIsLogicOpen(false)} 
+        schema={builder.schema} 
+        onUpdateLogic={(logic) => builder.updateSchemaSettings({ logic })} 
+      />
+      <BuilderHeader
+            schema={builder.schema}
           formId={form.id}
           title={form.title}
           status={form.status}
@@ -80,6 +88,7 @@ export function FormBuilder({ form, initialSchema, onSave, onWorkflowAction, isW
           onRedo={builder.redo}
           onPreview={() => window.open(`/forms/${form.id}/preview`, '_blank')}
           onWorkflowAction={onWorkflowAction}
+        onOpenLogic={() => setIsLogicOpen(true)}
           isWorkflowLoading={isWorkflowLoading}
           onSave={async () => {
             builder.setSaving(true)

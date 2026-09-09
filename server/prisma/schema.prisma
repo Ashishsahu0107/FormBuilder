@@ -57,6 +57,7 @@ model Form {
   description      String?
   category         String?
   tags             String[]   @default([])
+  views            Int        @default(0)
   status           FormStatus @default(DRAFT)
   currentVersionId String?
   deletedAt        DateTime?

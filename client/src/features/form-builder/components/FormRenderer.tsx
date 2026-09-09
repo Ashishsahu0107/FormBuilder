@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { FormSchema, FormSection, FormField, Condition, LogicRule } from '../types/schema'
 import { FieldRenderer } from './fields/FieldRenderer'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,21 @@ function evaluateCondition(cond: Condition, values: Record<string, unknown>): bo
 }
 
 export function FormRenderer({ schema, mode = 'public', onSubmit }: FormRendererProps) {
-  const [values, setValues] = useState<Record<string, unknown>>({})
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    if (mode === 'public' && schema.id) {
+      const saved = localStorage.getItem('form-draft-' + schema.id)
+      if (saved) {
+        try { return JSON.parse(saved) } catch (e) {}
+      }
+    }
+    return {}
+  })
+
+  useEffect(() => {
+    if (mode === 'public' && schema.id && Object.keys(values).length > 0) {
+      localStorage.setItem('form-draft-' + schema.id, JSON.stringify(values))
+    }
+  }, [values, mode, schema.id])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -123,7 +137,7 @@ export function FormRenderer({ schema, mode = 'public', onSubmit }: FormRenderer
   if (submitted) {
     return (
       <div className="text-center py-16">
-        <div className="text-5xl mb-4">âœ…</div>
+        <div className="text-5xl mb-4">Ã¢Å“â€¦</div>
         <h2 className="text-2xl font-semibold mb-2">Thank you!</h2>
         <p className="text-gray-500">{schema.settings?.successMessage || 'Your submission has been received.'}</p>
       </div>

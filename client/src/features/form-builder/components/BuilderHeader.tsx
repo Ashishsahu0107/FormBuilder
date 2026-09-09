@@ -1,8 +1,8 @@
 import { ArrowLeft, Undo2, Redo2, Eye, Save, Send, CheckCircle, Globe, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { templatesService } from '@/features/templates/services/templates.service'
 import { Workflow } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
 
 interface BuilderHeaderProps {
   formId: string
@@ -19,10 +19,11 @@ interface BuilderHeaderProps {
   onWorkflowAction?: (action: 'submit' | 'approve' | 'publish' | 'activate') => void
   onOpenLogic?: () => void
   isWorkflowLoading?: boolean
+  schema?: any
 }
 
-export function BuilderHeader({
-  title, status, isSaving, isDirty, canUndo, canRedo, onUndo, onRedo, onPreview, onSave, onWorkflowAction, isWorkflowLoading
+export function BuilderHeader({ schema, 
+  title, status, isSaving, isDirty, canUndo, canRedo, onUndo, onRedo, onPreview, onSave, onWorkflowAction, onOpenLogic, isWorkflowLoading
 }: BuilderHeaderProps) {
   const navigate = useNavigate()
   
@@ -55,6 +56,19 @@ export function BuilderHeader({
           </Button>
         </div>
         
+        <Button variant="outline" size="sm" onClick={async () => {
+          if (!schema) return
+          const title = prompt('Enter template name:', schema.title + ' Template')
+          if (!title) return
+          try {
+            await templatesService.create({ title, category: 'General', schema, description: schema.description })
+            alert('Template saved!')
+          } catch (e) {
+            alert('Failed to save template')
+          }
+        }} className="gap-2">
+          Save as Template
+        </Button>
         <Button variant="outline" size="sm" onClick={onOpenLogic} className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50">
           <Workflow className="h-4 w-4" /> Logic Rules
         </Button>

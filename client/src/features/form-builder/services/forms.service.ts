@@ -19,7 +19,7 @@ export const formsService = {
   getById: (id: string) =>
     api.get<{ success: boolean; data: Form }>(`/forms/${id}`),
 
-  create: (data: { title: string; description?: string; category?: string }) =>
+  create: (data: { title: string; description?: string; category?: string; schema?: any }) =>
     api.post<{ success: boolean; data: Form }>('/forms', data),
 
   update: (id: string, data: Partial<Form>) =>

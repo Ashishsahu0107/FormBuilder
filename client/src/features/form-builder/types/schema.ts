@@ -76,6 +76,7 @@ export interface FormSettings {
   successMessage?: string
   redirectUrl?: string
   isMultiStep?: boolean
+  webhooks?: { url: string; method: string }[]
   steps?: FormStep[]
   theme?: string
   allowedDomains?: string[]

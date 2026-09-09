@@ -38,6 +38,45 @@ export function PropertiesPanel({ className, field, settings, onUpdate, onUpdate
                 rows={3}
               />
             </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Webhooks</Label>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const currentWebhooks = (settings.webhooks as any[]) || []
+                  onUpdateSettings({ webhooks: [...currentWebhooks, { url: '', method: 'POST' }] as any })
+                }}>+ Add</Button>
+              </div>
+              {((settings.webhooks as any[]) || []).map((wh, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <select 
+                    className="border border-gray-300 rounded px-2 text-sm"
+                    value={wh.method} 
+                    onChange={e => {
+                      const w = [...((settings.webhooks as any[]) || [])]
+                      w[idx].method = e.target.value
+                      onUpdateSettings({ webhooks: w as any })
+                    }}
+                  >
+                    <option>POST</option>
+                    <option>PUT</option>
+                  </select>
+                  <Input 
+                    placeholder="https://your-api.com/webhook" 
+                    value={wh.url} 
+                    onChange={e => {
+                      const w = [...((settings.webhooks as any[]) || [])]
+                      w[idx].url = e.target.value
+                      onUpdateSettings({ webhooks: w as any })
+                    }}
+                  />
+                  <Button variant="ghost" size="icon" className="text-red-500 shrink-0" onClick={() => {
+                    const w = [...((settings.webhooks as any[]) || [])]
+                    w.splice(idx, 1)
+                    onUpdateSettings({ webhooks: w as any })
+                  }}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+            </div>
             <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
               <div className="space-y-0.5">
                 <Label>Multi-Step Form</Label>

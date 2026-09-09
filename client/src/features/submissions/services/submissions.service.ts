@@ -7,6 +7,9 @@ export const submissionsService = {
   getById: (formId: string, subId: string) => {
     return api.get(`/forms/${formId}/submissions/${subId}`)
   },
+  getAnalytics: (formId: string) => {
+    return api.get(`/forms/${formId}/submissions/analytics`)
+  },
   exportCsv: (formId: string, params?: { startDate?: string; endDate?: string }) => {
     return api.get(`/forms/${formId}/submissions/export`, { params, responseType: 'blob' })
   }

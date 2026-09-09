@@ -112,4 +112,40 @@ router.get('/:subId', authenticate, async (req: AuthRequest, res: Response) => {
   }
 })
 
+// GET /api/forms/:id/analytics
+router.get('/analytics', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const formId = req.params.id as string
+    const form = await verifyFormAccess(formId, req.user!.id, req.user!.role)
+    if (!form) return sendError(res, 'Form not found or access denied', 404)
+
+    const totalSubmissions = await Submission.countDocuments({ formSlug: form.slug })
+    
+    // Group submissions by day for the last 30 days
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const dailySubmissions = await Submission.aggregate([
+      { $match: { formSlug: form.slug, createdAt: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ])
+
+    return sendSuccess(res, {
+      views: (form as any).views || 0,
+      totalSubmissions,
+      conversionRate: (form as any).views ? ((totalSubmissions / (form as any).views) * 100).toFixed(2) : 0,
+      dailySubmissions: dailySubmissions.map(d => ({ date: d._id, count: d.count }))
+    })
+  } catch (error) {
+    console.error('Analytics error:', error)
+    return sendError(res, 'Failed to fetch analytics')
+  }
+})
+
 export default router

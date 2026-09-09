@@ -5,6 +5,7 @@ import { FormRenderer } from '@/features/form-builder/components/FormRenderer'
 import type { FormSchema } from '@/features/form-builder/types/schema'
 
 export function PublicFormPage() {
+  const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true'
   const { slug } = useParams<{ slug: string }>()
   const [schema, setSchema] = useState<FormSchema | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,7 +37,7 @@ export function PublicFormPage() {
   if (!schema) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className={isEmbed ? 'min-h-screen bg-transparent p-4' : 'min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8'}>
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="h-2 bg-blue-600"></div>
         <div className="p-8 sm:p-12">

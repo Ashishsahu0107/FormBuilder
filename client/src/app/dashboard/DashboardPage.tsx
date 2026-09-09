@@ -2,15 +2,15 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { formsService } from '@/features/form-builder/services/forms.service'
+import { templatesService } from '@/features/templates/services/templates.service'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, MoreVertical, Edit2, Eye, Trash, LogOut, Inbox, Share2 } from 'lucide-react'
+import { Plus, Eye, Trash, Inbox, Share2 } from 'lucide-react'
 import { ShareDialog } from '@/features/form-builder/components/ShareDialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export function DashboardPage() {
   const { user, logout } = useAuth()
@@ -20,10 +20,26 @@ export function DashboardPage() {
   const [newTitle, setNewTitle] = useState('')
   const [shareSlug, setShareSlug] = useState<string | null>(null)
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['forms', statusFilter],
-    queryFn: () => formsService.getAll(statusFilter !== 'ALL' ? { status: statusFilter } : {})
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => templatesService.getAll(),
+    enabled: statusFilter === 'TEMPLATES'
   })
+
+  const { data, refetch } = useQuery({
+    queryKey: ['forms', statusFilter],
+    queryFn: () => formsService.getAll(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+    enabled: statusFilter !== 'TEMPLATES'
+  })
+
+  const handleUseTemplate = async (template: any) => {
+    try {
+      const res = await formsService.create({ title: template.title + ' (Copy)', schema: template.schema })
+      navigate(`/forms/${res.data.data.id}/builder`)
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleCreate = async () => {
     if (!newTitle) return
@@ -50,7 +66,7 @@ export function DashboardPage() {
           <h1 className="text-xl font-bold text-gray-900">Form Builder Dashboard</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">Welcome, {user?.name}</span>
-            <Button variant="ghost" size="icon" onClick={logout}><LogOut className="h-4 w-4" /></Button>
+            <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
           </div>
         </div>
       </header>
@@ -63,6 +79,7 @@ export function DashboardPage() {
               <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
               <TabsTrigger value="PUBLISHED">Published</TabsTrigger>
               <TabsTrigger value="ACTIVE">Active</TabsTrigger>
+              <TabsTrigger value="TEMPLATES">Templates</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -79,19 +96,27 @@ export function DashboardPage() {
                   <label className="text-sm font-medium">Form Title</label>
                   <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. Admission Form 2026" />
                 </div>
+                <Button onClick={handleCreate} className="w-full">Create & Open Builder</Button>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreate} disabled={!newTitle}>Create</Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-12">Loading forms...</div>
+        {statusFilter === 'TEMPLATES' ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {(templatesData?.data.data || []).map((t: any) => (
+              <div key={t.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition">
+                <h3 className="font-bold text-lg text-gray-900">{t.title}</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-4">{t.description || 'No description'}</p>
+                <Button onClick={() => handleUseTemplate(t)} className="w-full" variant="outline">Use Template</Button>
+              </div>
+            ))}
+            {(templatesData?.data.data || []).length === 0 && (
+              <div className="col-span-3 text-center py-12 text-gray-500">No templates available yet.</div>
+            )}
+          </div>
         ) : (
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -102,9 +127,9 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(data?.data.data || []).map(form => (
+                {(data?.data.data || []).map((form: any) => (
                   <tr key={form.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => navigate(`/forms/${form.id}/builder`)}>
                       <div className="font-medium text-gray-900">{form.title}</div>
                       <div className="text-sm text-gray-500">/{form.slug}</div>
                     </td>
@@ -118,35 +143,29 @@ export function DashboardPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/forms/${form.id}/builder`)}>
-                          <Edit2 className="h-4 w-4" />
+                        {form.status === 'ACTIVE' && (
+                          <Button variant="ghost" size="icon" onClick={() => setShareSlug(form.slug)} title="Share Form">
+                            <Share2 className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => navigate(`/forms/${form.id}/submissions`)} title="View Submissions">
+                          <Inbox className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => window.open(`/forms/${form.slug}`, '_blank')}>
+                        <Button variant="ghost" size="icon" onClick={() => window.open(`/forms/${form.slug}`, '_blank')} title="Preview Form">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(form.id)}>
-                              <Trash className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(form.id)}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {(!data?.data.data || data.data.data.length === 0) && (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      No forms found. Create one to get started!
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
+            {(data?.data.data || []).length === 0 && (
+              <div className="text-center py-12 text-gray-500">No forms found. Click "Create Form" to start.</div>
+            )}
           </div>
         )}
       </main>
