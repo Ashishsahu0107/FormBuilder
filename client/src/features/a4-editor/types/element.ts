@@ -1,8 +1,13 @@
 // A4 at 96 DPI = 794 x 1123 px
 export const A4_WIDTH = 794
 export const A4_HEIGHT = 1123
+// A3 at 96 DPI = 1123 x 1587 px
+export const A3_WIDTH = 1123
+export const A3_HEIGHT = 1587
+
 export const A4_PADDING = 48
 
+export type PaperSize = 'A4' | 'A3'
 export type ElementType =
   | 'heading'
   | 'subheading'
