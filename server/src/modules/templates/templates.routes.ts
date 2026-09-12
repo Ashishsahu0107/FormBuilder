@@ -32,7 +32,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 })
 
 // POST /api/templates
-router.post('/', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), async (req: AuthRequest, res: Response) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { title, description, category, schema } = req.body
     if (!title || !category || !schema) return sendError(res, 'Missing required fields', 400)
