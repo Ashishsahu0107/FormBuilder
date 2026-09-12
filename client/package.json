@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -41,6 +41,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.87.0",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
