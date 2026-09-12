@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Eye, Trash, Inbox, Share2 } from 'lucide-react'
+import { Plus, Eye, Trash, Inbox, Share2, Layers } from 'lucide-react'
 import { ShareDialog } from '@/features/form-builder/components/ShareDialog'
+import { DeleteFormModal } from '@/features/form-builder/components/DeleteFormModal'
 
 export function DashboardPage() {
   const { user, logout } = useAuth()
@@ -18,16 +19,23 @@ export function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [paperSize, setPaperSize] = useState<'A4' | 'A3'>('A4')
   const [shareSlug, setShareSlug] = useState<string | null>(null)
 
+  // Delete Modal state
+  const [formToDelete, setFormToDelete] = useState<any>(null)
+
+  // View Modal state
+  const [formToView, setFormToView] = useState<any>(null)
+
   const { data: templatesData } = useQuery({
-    queryKey: ['templates'],
+    queryKey: ['templates', user?.id],
     queryFn: () => templatesService.getAll(),
     enabled: statusFilter === 'TEMPLATES'
   })
 
   const { data, refetch } = useQuery({
-    queryKey: ['forms', statusFilter],
+    queryKey: ['forms', statusFilter, user?.id],
     queryFn: () => formsService.getAll(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
     enabled: statusFilter !== 'TEMPLATES'
   })
@@ -44,7 +52,10 @@ export function DashboardPage() {
   const handleCreate = async () => {
     if (!newTitle) return
     try {
-      const res = await formsService.create({ title: newTitle })
+      const res = await formsService.create({ 
+        title: newTitle, 
+        schema: { paperSize, elements: [] } 
+      })
       setIsCreateOpen(false)
       navigate(`/forms/${res.data.data.id}/builder`)
     } catch (err) {
@@ -52,11 +63,9 @@ export function DashboardPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this form?')) {
-      await formsService.delete(id)
-      refetch()
-    }
+  const handleDelete = async (formId: string) => {
+    await formsService.delete(formId)
+    refetch()
   }
 
   return (
@@ -66,7 +75,10 @@ export function DashboardPage() {
           <h1 className="text-xl font-bold text-gray-900">Form Builder Dashboard</h1>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">Welcome, {user?.name}</span>
-            <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/template-editor')} className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50">
+            <Layers className="h-4 w-4" /> Template Editor
+          </Button>
+          <Button variant="outline" size="sm" onClick={logout}>Logout</Button>
           </div>
         </div>
       </header>
@@ -96,7 +108,34 @@ export function DashboardPage() {
                   <label className="text-sm font-medium">Form Title</label>
                   <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. Admission Form 2026" />
                 </div>
-                <Button onClick={handleCreate} className="w-full">Create & Open Builder</Button>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Paper Size</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="paperSize" 
+                        value="A4" 
+                        checked={paperSize === 'A4'} 
+                        onChange={() => setPaperSize('A4')}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <span>A4</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="paperSize" 
+                        value="A3" 
+                        checked={paperSize === 'A3'} 
+                        onChange={() => setPaperSize('A3')}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <span>A3</span>
+                    </label>
+                  </div>
+                </div>
+                <Button onClick={handleCreate} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all">Create & Open Builder</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -151,10 +190,10 @@ export function DashboardPage() {
                         <Button variant="ghost" size="icon" onClick={() => navigate(`/forms/${form.id}/submissions`)} title="View Submissions">
                           <Inbox className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => window.open(`/forms/${form.slug}`, '_blank')} title="Preview Form">
+                        <Button variant="ghost" size="icon" onClick={() => setFormToView(form)} title="Preview Form">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(form.id)}>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700" onClick={() => setFormToDelete(form)}>
                           <Trash className="h-4 w-4" />
                         </Button>
                       </div>
@@ -169,7 +208,35 @@ export function DashboardPage() {
           </div>
         )}
       </main>
+      
+      {/* Share Modal */}
       {shareSlug && <ShareDialog formSlug={shareSlug} isOpen={true} onClose={() => setShareSlug(null)} />}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteFormModal 
+        form={formToDelete} 
+        isOpen={!!formToDelete} 
+        onClose={() => setFormToDelete(null)} 
+        onConfirm={handleDelete} 
+      />
+
+      {/* View Form Modal */}
+      <Dialog open={!!formToView} onOpenChange={(open) => !open && setFormToView(null)}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b shrink-0">
+            <DialogTitle>Preview: {formToView?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 bg-gray-100 overflow-hidden relative">
+            {formToView && (
+              <iframe 
+                src={`/forms/${formToView.slug}`} 
+                className="w-full h-full border-0"
+                title="Form Preview"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
