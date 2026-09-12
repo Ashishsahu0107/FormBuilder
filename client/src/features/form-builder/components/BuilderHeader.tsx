@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { templatesService } from '@/features/templates/services/templates.service'
 import { Workflow } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 interface BuilderHeaderProps {
   formId: string
@@ -62,9 +63,9 @@ export function BuilderHeader({ schema,
           if (!title) return
           try {
             await templatesService.create({ title, category: 'General', schema, description: schema.description })
-            alert('Template saved!')
+            toast.success('Template saved!')
           } catch (e) {
-            alert('Failed to save template')
+            toast.error('Failed to save template')
           }
         }} className="gap-2">
           Save as Template
