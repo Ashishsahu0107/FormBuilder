@@ -37,3 +37,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+  // npx prisma db seed

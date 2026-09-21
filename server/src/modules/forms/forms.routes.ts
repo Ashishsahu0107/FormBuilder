@@ -56,10 +56,16 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const skip = (page - 1) * limit
     const status = req.query.status as string | undefined
     const search = req.query.search as string | undefined
+    const adminView = req.query.adminView === 'true'
 
     const where: Record<string, unknown> = {
-      createdBy: req.user!.id,
       deletedAt: null,
+    }
+
+    if (adminView && req.user!.role === 'ADMIN') {
+      // Admin viewing all forms, don't filter by createdBy
+    } else {
+      where.createdBy = req.user!.id
     }
 
     if (status) where.status = status
@@ -218,6 +224,41 @@ router.patch('/:id', authenticate, validate(updateFormSchema), async (req: AuthR
   } catch (err) {
     console.error('[PATCH /forms/:id]', err)
     return sendError(res, 'Failed to update form')
+  }
+})
+
+router.patch('/:id/approve', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return sendError(res, 'Unauthorized to approve forms', 403)
+    }
+
+    const form = await prisma.form.findFirst({
+      where: { id: req.params.id as string, deletedAt: null },
+    })
+    
+    if (!form) return sendError(res, 'Form not found', 404)
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedForm = await tx.form.update({
+        where: { id: form.id },
+        data: { status: 'APPROVED' },
+      })
+
+      if (form.currentVersionId) {
+        await tx.formVersion.update({
+          where: { id: form.currentVersionId },
+          data: { status: 'APPROVED' },
+        })
+      }
+
+      return updatedForm
+    })
+
+    return sendSuccess(res, updated, 'Form approved')
+  } catch (err) {
+    console.error('[PATCH /forms/:id/approve]', err)
+    return sendError(res, 'Failed to approve form')
   }
 })
 

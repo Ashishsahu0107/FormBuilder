@@ -13,7 +13,7 @@ export interface PaginatedResponse<T> {
 }
 
 export const formsService = {
-  getAll: (params?: { page?: number; limit?: number; status?: string; search?: string }) =>
+  getAll: (params?: { page?: number; limit?: number; status?: string; search?: string; adminView?: boolean }) =>
     api.get<PaginatedResponse<Form>>('/forms', { params }),
 
   getById: (id: string) =>
@@ -45,8 +45,8 @@ export const formsService = {
   submitForReview: (formId: string) =>
     api.post(`/forms/${formId}/submit-review`),
 
-  approve: (formId: string, comment?: string) =>
-    api.post(`/forms/${formId}/approve`, { comment }),
+  approve: (formId: string) =>
+    api.patch(`/forms/${formId}/approve`),
 
   reject: (formId: string, comment: string) =>
     api.post(`/forms/${formId}/reject`, { comment }),

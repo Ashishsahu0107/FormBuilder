@@ -1,8 +1,10 @@
-import type { CanvasElement, PaperSize } from '../types/element'
+import { useRef } from 'react'
+import type { PaperSize } from '../types/element'
 import { CanvasElementComponent } from './CanvasElement'
 import { Trash2 } from 'lucide-react'
 import { A4_WIDTH, A4_HEIGHT, A3_WIDTH, A3_HEIGHT } from '../types/element'
 import type { A4EditorReturn } from '../hooks/useA4Editor'
+import { FIELD_LIBRARY } from '../constants/field-types'
 
 interface A4CanvasProps {
   editor: A4EditorReturn
@@ -11,15 +13,63 @@ interface A4CanvasProps {
   paperSize?: PaperSize
   totalPages?: number
   onDeletePage?: (pageIndex: number) => void
+  isPreview?: boolean
 }
 
-export function A4Canvas({ editor, scale, canvasRef, paperSize = 'A4', totalPages = 1, onDeletePage }: A4CanvasProps) {
+export function A4Canvas({ editor, scale, canvasRef, paperSize = 'A4', totalPages = 1, onDeletePage, isPreview = false }: A4CanvasProps) {
   const { elements, selectedId, setSelectedId } = editor
+  const dropIndicatorRef = useRef<HTMLDivElement>(null)
   
   const width = paperSize === 'A3' ? A3_WIDTH : A4_WIDTH
   const pageHeight = paperSize === 'A3' ? A3_HEIGHT : A4_HEIGHT
 
   const canvasHeight = totalPages * pageHeight
+
+  const getCanvasRelativePos = (e: React.DragEvent): { x: number; y: number } => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / scale
+    const y = (e.clientY - rect.top) / scale
+    return { x, y }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+
+    // Show drop indicator
+    if (dropIndicatorRef.current && canvasRef.current) {
+      const { x, y } = getCanvasRelativePos(e)
+      const item = FIELD_LIBRARY.find(f => f.type === e.dataTransfer.types[0]) ?? 
+                   FIELD_LIBRARY.find(f => f.type === 'field_name')!
+      dropIndicatorRef.current.style.display = 'block'
+      dropIndicatorRef.current.style.left = `${Math.max(0, x - item.defaultWidth / 2)}px`
+      dropIndicatorRef.current.style.top = `${Math.max(0, y - item.defaultHeight / 2)}px`
+      dropIndicatorRef.current.style.width = `${item.defaultWidth}px`
+      dropIndicatorRef.current.style.height = `${item.defaultHeight}px`
+    }
+  }
+
+  const handleDragLeave = () => {
+    if (dropIndicatorRef.current) {
+      dropIndicatorRef.current.style.display = 'none'
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (dropIndicatorRef.current) {
+      dropIndicatorRef.current.style.display = 'none'
+    }
+
+    const elementType = e.dataTransfer.getData('elementType')
+    if (!elementType) return
+
+    const item = FIELD_LIBRARY.find(f => f.type === elementType)
+    if (!item) return
+
+    const { x, y } = getCanvasRelativePos(e)
+    editor.addElementAtPosition(item, x, y)
+  }
 
   return (
     <div
@@ -38,7 +88,25 @@ export function A4Canvas({ editor, scale, canvasRef, paperSize = 'A4', totalPage
       onMouseDown={e => {
         if (e.target === canvasRef.current) setSelectedId(null)
       }}
+      onDragOver={isPreview ? undefined : handleDragOver}
+      onDragLeave={isPreview ? undefined : handleDragLeave}
+      onDrop={isPreview ? undefined : handleDrop}
     >
+      {/* Drop indicator ghost */}
+      <div
+        ref={dropIndicatorRef}
+        style={{
+          display: 'none',
+          position: 'absolute',
+          border: '2px dashed #3b82f6',
+          borderRadius: 4,
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          pointerEvents: 'none',
+          zIndex: 100,
+          transition: 'none',
+        }}
+      />
+
       {/* Margin guides for each page (subtle) */}
       {Array.from({ length: totalPages }).map((_, i) => (
         <div key={`guide-${i}`} className="hide-on-export" style={{
@@ -64,8 +132,8 @@ export function A4Canvas({ editor, scale, canvasRef, paperSize = 'A4', totalPage
         return (
           <div key={`delete-${i}`} className="hide-on-export" style={{
             position: 'absolute',
-            top: i * pageHeight + 12, // 12px from top of page
-            right: 12,                // 12px from right of page
+            top: i * pageHeight + 12,
+            right: 12,
             zIndex: 60,
             pointerEvents: 'none',
           }}>
@@ -104,10 +172,11 @@ export function A4Canvas({ editor, scale, canvasRef, paperSize = 'A4', totalPage
         <CanvasElementComponent
           key={el.id}
           element={el}
-          isSelected={selectedId === el.id}
+          isSelected={!isPreview && selectedId === el.id}
           scale={scale}
-          onSelect={setSelectedId}
+          onSelect={isPreview ? () => {} : setSelectedId}
           editor={editor}
+          isPreview={isPreview}
         />
       ))}
     </div>

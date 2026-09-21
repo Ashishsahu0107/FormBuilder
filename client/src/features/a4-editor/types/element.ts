@@ -57,6 +57,7 @@ export interface CanvasElement {
   options?: string[]
   style: ElementStyle
   locked?: boolean
+  _overlapping?: boolean  // transient flag — collision state during drag
 }
 
 export const DEFAULT_STYLE: ElementStyle = {

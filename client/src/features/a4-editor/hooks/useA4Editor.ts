@@ -86,6 +86,63 @@ export function useA4Editor(initialElements: CanvasElement[] = []) {
     return newElement
   }, [elements, updateElements])
 
+
+  const addElementAtPosition = useCallback((item: FieldLibraryItem, dropX: number, dropY: number) => {
+    const GAP = 12 // px gap between elements
+
+    // Initial desired position centered on drop point
+    let x = Math.max(A4_PADDING, dropX - item.defaultWidth / 2)
+    let y = Math.max(A4_PADDING, dropY - item.defaultHeight / 2)
+    const w = item.defaultWidth
+    const h = item.defaultHeight
+
+    // Helper: check if rect (x,y,w,h) overlaps any existing element
+    const overlaps = (rx: number, ry: number, rw: number, rh: number) =>
+      elements.some(el =>
+        rx < el.x + el.width &&
+        rx + rw > el.x &&
+        ry < el.y + el.height &&
+        ry + rh > el.y
+      )
+
+    // If overlap, push y below the bottommost overlapping element — max 20 iterations
+    let iterations = 0
+    while (overlaps(x, y, w, h) && iterations < 20) {
+      // Find the element we're overlapping with that has the greatest bottom edge
+      const overlapping = elements.filter(el =>
+        x < el.x + el.width &&
+        x + w > el.x &&
+        y < el.y + el.height &&
+        y + h > el.y
+      )
+      const maxBottom = Math.max(...overlapping.map(el => el.y + el.height))
+      y = maxBottom + GAP
+      iterations++
+    }
+
+    const newElement: CanvasElement = {
+      id: nanoid(8),
+      type: item.type,
+      x,
+      y,
+      width: w,
+      height: h,
+      content: item.defaultContent,
+      label: item.defaultContent,
+      style: {
+        ...DEFAULT_STYLE,
+        ...(item.type === 'heading' ? { fontSize: 28, fontWeight: 'bold' as const, textAlign: 'center' as const } : {}),
+        ...(item.type === 'subheading' ? { fontSize: 16, fontWeight: 'bold' as const } : {}),
+        ...(item.type === 'paragraph' ? { fontSize: 12, color: '#4b5563' } : {}),
+      },
+    }
+    const updated = [...elements, newElement]
+    updateElements(updated)
+    setSelectedId(newElement.id)
+    return newElement
+  }, [elements, updateElements])
+
+
   const updateElement = useCallback((id: string, updates: Partial<CanvasElement>) => {
     const updated = elements.map(el => el.id === id ? { ...el, ...updates } : el)
     updateElements(updated)
@@ -98,46 +155,109 @@ export function useA4Editor(initialElements: CanvasElement[] = []) {
     updateElements(updated)
   }, [elements, updateElements])
 
+  // Shared collision resolver — finds nearest non-overlapping (x, y) for element `el` relative to others
+  const resolveCollision = useCallback((
+    el: { id: string; width: number; height: number },
+    desiredX: number,
+    desiredY: number,
+    others: Array<{ id: string; x: number; y: number; width: number; height: number }>,
+    pageHeight: number,
+    pageWidth: number,
+  ): { x: number; y: number } => {
+    const GAP = 6
+
+    const overlapsOthers = (rx: number, ry: number) =>
+      others.some(other =>
+        rx < other.x + other.width &&
+        rx + el.width > other.x &&
+        ry < other.y + other.height &&
+        ry + el.height > other.y
+      )
+
+    if (!overlapsOthers(desiredX, desiredY)) return { x: desiredX, y: desiredY }
+
+    // Build candidate positions: edges of every overlapping element
+    const overlapping = others.filter(other =>
+      desiredX < other.x + other.width &&
+      desiredX + el.width > other.x &&
+      desiredY < other.y + other.height &&
+      desiredY + el.height > other.y
+    )
+
+    const candidates: { x: number; y: number }[] = []
+    for (const other of overlapping) {
+      candidates.push({ x: desiredX,               y: other.y - el.height - GAP })  // above
+      candidates.push({ x: desiredX,               y: other.y + other.height + GAP }) // below
+      candidates.push({ x: other.x - el.width - GAP, y: desiredY })                 // left
+      candidates.push({ x: other.x + other.width + GAP, y: desiredY })              // right
+    }
+
+    // Filter candidates that are within page margins and not overlapping anything
+    const valid = candidates.filter(c => {
+      const cy = c.y + el.height / 2
+      const pidx = Math.max(0, Math.floor(cy / pageHeight))
+      const ptop = pidx * pageHeight + A4_PADDING
+      const pbot = (pidx + 1) * pageHeight - A4_PADDING - el.height
+      return (
+        c.x >= A4_PADDING &&
+        c.x + el.width <= pageWidth - A4_PADDING &&
+        c.y >= ptop &&
+        c.y <= pbot &&
+        !overlapsOthers(c.x, c.y)
+      )
+    })
+
+    if (valid.length === 0) return { x: desiredX, y: desiredY } // no valid spot found, allow overlap as last resort
+
+    // Pick the candidate closest to desired position
+    valid.sort((a, b) =>
+      Math.hypot(a.x - desiredX, a.y - desiredY) -
+      Math.hypot(b.x - desiredX, b.y - desiredY)
+    )
+    return valid[0]
+  }, [])
+
   const moveElement = useCallback((id: string, x: number, y: number, paperSize: 'A4' | 'A3' = 'A4') => {
     const el = elements.find(e => e.id === id)
     if (!el) return
 
-    const pageHeight = paperSize === 'A3' ? A3_HEIGHT : A4_HEIGHT;
-    const pageWidth = paperSize === 'A3' ? A3_WIDTH : A4_WIDTH;
+    const pageHeight = paperSize === 'A3' ? A3_HEIGHT : A4_HEIGHT
+    const pageWidth  = paperSize === 'A3' ? A3_WIDTH  : A4_WIDTH
 
-    // Clamp X to side margins (padding)
+    // Clamp to page margins
     const clampedX = Math.max(A4_PADDING, Math.min(x, pageWidth - A4_PADDING - el.width))
-    
-    // Determine which page the element is being dragged on based on its Y coordinate
-    // We use the center of the element to determine the active page for smoother transitions
-    const elementCenterY = y + (el.height / 2);
-    const pageIndex = Math.max(0, Math.floor(elementCenterY / pageHeight));
-    
-    // Clamp Y to the top and bottom margins of the CURRENT page
-    const pageTopMargin = pageIndex * pageHeight + A4_PADDING;
-    const pageBottomMargin = (pageIndex + 1) * pageHeight - A4_PADDING - el.height;
-    
-    const clampedY = Math.max(pageTopMargin, Math.min(y, pageBottomMargin));
+    const centerY  = y + el.height / 2
+    const pageIdx  = Math.max(0, Math.floor(centerY / pageHeight))
+    const clampedY = Math.max(
+      pageIdx * pageHeight + A4_PADDING,
+      Math.min(y, (pageIdx + 1) * pageHeight - A4_PADDING - el.height)
+    )
 
-    setElements(prev => prev.map(e => e.id === id ? { ...e, x: clampedX, y: clampedY } : e))
-  }, [elements])
+    // Resolve collision in real-time
+    const others = elements.filter(e => e.id !== id)
+    const { x: finalX, y: finalY } = resolveCollision(el, clampedX, clampedY, others, pageHeight, pageWidth)
 
-  const commitMove = useCallback((id: string, x: number, y: number, paperSize: 'A4' | 'A3' = 'A4') => {
+    setElements(prev => prev.map(e =>
+      e.id === id ? { ...e, x: finalX, y: finalY, _overlapping: false } : e
+    ))
+  }, [elements, resolveCollision])
+
+
+  const commitMove = useCallback((id: string, _x: number, _y: number, paperSize: 'A4' | 'A3' = 'A4') => {
+    // Collision is already resolved live in moveElement; here we just commit the current position to history
     const el = elements.find(e => e.id === id)
     if (!el) return
-    const pageHeight = paperSize === 'A3' ? A3_HEIGHT : A4_HEIGHT;
-    const pageWidth = paperSize === 'A3' ? A3_WIDTH : A4_WIDTH;
 
-    const clampedX = Math.max(A4_PADDING, Math.min(x, pageWidth - A4_PADDING - el.width))
-    const elementCenterY = y + (el.height / 2);
-    const pageIndex = Math.max(0, Math.floor(elementCenterY / pageHeight));
-    const pageTopMargin = pageIndex * pageHeight + A4_PADDING;
-    const pageBottomMargin = (pageIndex + 1) * pageHeight - A4_PADDING - el.height;
-    const clampedY = Math.max(pageTopMargin, Math.min(y, pageBottomMargin));
+    const pageHeight = paperSize === 'A3' ? A3_HEIGHT : A4_HEIGHT
+    const pageWidth  = paperSize === 'A3' ? A3_WIDTH  : A4_WIDTH
+    const others = elements.filter(e => e.id !== id)
+    const { x: finalX, y: finalY } = resolveCollision(el, el.x, el.y, others, pageHeight, pageWidth)
 
-    const updated = elements.map(e => e.id === id ? { ...e, x: clampedX, y: clampedY } : e)
+    const updated = elements.map(e =>
+      e.id === id ? { ...e, x: finalX, y: finalY, _overlapping: false } : e
+    )
     updateElements(updated)
-  }, [elements, updateElements])
+  }, [elements, updateElements, resolveCollision])
 
   const resizeElement = useCallback((id: string, x: number, y: number, width: number, height: number, paperSize: 'A4' | 'A3' = 'A4') => {
     const el = elements.find(e => e.id === id)
@@ -254,6 +374,7 @@ export function useA4Editor(initialElements: CanvasElement[] = []) {
     selectedElement,
     setSelectedId,
     addElement,
+    addElementAtPosition,
     updateElement,
     updateElementStyle,
     moveElement,

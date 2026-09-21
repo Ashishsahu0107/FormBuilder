@@ -87,7 +87,14 @@ export function A4Editor({
     setLastSavedName(templateName);
   }, [templateName]);
 
-  const isDirty = name !== lastSavedName || JSON.stringify(editor.elements) !== JSON.stringify(lastSavedElements);
+  // Strip transient _overlapping flag before comparing — it's not a real change
+  const stripTransient = (els: any[]) =>
+    els.map(({ _overlapping, ...rest }: any) => rest)
+
+  const isDirty =
+    name !== lastSavedName ||
+    JSON.stringify(stripTransient(editor.elements)) !== JSON.stringify(stripTransient(lastSavedElements))
+
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -324,19 +331,31 @@ export function A4Editor({
           <Eye className="w-4 h-4" /> Preview
         </button>
 
-        {/* Save */}
         {onSave && (
           <button
             onClick={handleSave}
             disabled={!isDirty || isSaving || !!(formStatus && formStatus !== "DRAFT")}
-            title={formStatus && formStatus !== "DRAFT" ? `Cannot save because form is ${formStatus}` : "Save"}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg transition-colors ${
-              !isDirty || isSaving || !!(formStatus && formStatus !== "DRAFT")
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-gray-900 text-white hover:bg-gray-700"
+            title={
+              formStatus && formStatus !== "DRAFT"
+                ? `Cannot save — form is ${formStatus}`
+                : isDirty
+                ? "You have unsaved changes"
+                : "No changes to save"
+            }
+            className={`relative flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg transition-all ${
+              !!(formStatus && formStatus !== "DRAFT")
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : !isDirty || isSaving
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-200 ring-2 ring-emerald-300"
             }`}
           >
-            <Save className="w-4 h-4" /> {isSaving ? "Saving..." : "Save"}
+            {/* Unsaved changes dot */}
+            {isDirty && !isSaving && !(formStatus && formStatus !== "DRAFT") && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-400 rounded-full animate-pulse" />
+            )}
+            <Save className="w-4 h-4" />
+            {isSaving ? "Saving..." : isDirty ? "Save *" : "Saved"}
           </button>
         )}
 
@@ -421,7 +440,10 @@ export function A4Editor({
               backgroundImage: "radial-gradient(#c7c7c7 1px, transparent 1px)",
               backgroundSize: "20px 20px",
             }}
-            onMouseDown={() => editor.setSelectedId(null)}
+            onMouseDown={(e) => {
+              // Only deselect when clicking directly on background (not on canvas)
+              if (e.target === e.currentTarget) editor.setSelectedId(null)
+            }}
           >
             <div
               style={{
@@ -439,16 +461,17 @@ export function A4Editor({
                 paperSize={paperSize}
                 totalPages={totalPages}
                 onDeletePage={handleDeletePage}
+                isPreview={isPreview}
               />
             </div>
           </div>
           
-          {/* Add Page Button (Floating) */}
+          {/* Add Page Button (Floating) — hidden in preview mode */}
+          {!isPreview && (
           <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
             <button 
               onClick={() => {
                 setManualPageCount(totalPages + 1);
-                // Scroll to bottom slightly
                 setTimeout(() => {
                   const scrollContainer = document.querySelector('.overflow-auto.bg-gray-200');
                   if (scrollContainer) scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -459,6 +482,7 @@ export function A4Editor({
               <span className="text-lg leading-none">+</span> Add New Page
             </button>
           </div>
+          )}
         </div>
 
         {!isPreview && <A4PropertiesPanel editor={editor} />}

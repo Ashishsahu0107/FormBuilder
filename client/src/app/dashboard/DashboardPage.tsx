@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Eye, Trash, Inbox, Share2, Layers } from 'lucide-react'
+import { Plus, Eye, Trash, Inbox, Share2, Layers, CheckCircle, FileText, ArrowRight } from 'lucide-react'
 import { ShareDialog } from '@/features/form-builder/components/ShareDialog'
 import { DeleteFormModal } from '@/features/form-builder/components/DeleteFormModal'
+import { toast } from 'react-hot-toast'
 
 export function DashboardPage() {
   const { user, logout } = useAuth()
@@ -34,9 +35,20 @@ export function DashboardPage() {
     enabled: statusFilter === 'TEMPLATES'
   })
 
+  const isAdminView = user?.role === 'ADMIN' && ['PENDING', 'APPROVED'].includes(statusFilter)
+
   const { data, refetch } = useQuery({
     queryKey: ['forms', statusFilter, user?.id],
-    queryFn: () => formsService.getAll(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+    queryFn: () => {
+      const params: any = {}
+      if (isAdminView) {
+        params.adminView = true
+        params.status = statusFilter === 'PENDING' ? 'UNDER_REVIEW' : 'APPROVED'
+      } else if (statusFilter !== 'ALL') {
+        params.status = statusFilter
+      }
+      return formsService.getAll(params)
+    },
     enabled: statusFilter !== 'TEMPLATES'
   })
 
@@ -68,6 +80,17 @@ export function DashboardPage() {
     refetch()
   }
 
+  const handleApprove = async (formId: string) => {
+    try {
+      await formsService.approve(formId)
+      toast.success('Form approved successfully!')
+      refetch()
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to approve form')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -87,10 +110,20 @@ export function DashboardPage() {
         <div className="flex justify-between items-center mb-6">
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
             <TabsList>
-              <TabsTrigger value="ALL">All Forms</TabsTrigger>
-              <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
-              <TabsTrigger value="PUBLISHED">Published</TabsTrigger>
-              <TabsTrigger value="ACTIVE">Active</TabsTrigger>
+              {user?.role === 'ADMIN' ? (
+                <>
+                  <TabsTrigger value="PENDING">Pending Approvals</TabsTrigger>
+                  <TabsTrigger value="APPROVED">Approved Forms</TabsTrigger>
+                  <TabsTrigger value="ALL">My Forms</TabsTrigger>
+                </>
+              ) : (
+                <>
+                  <TabsTrigger value="ALL">All Forms</TabsTrigger>
+                  <TabsTrigger value="DRAFT">Drafts</TabsTrigger>
+                  <TabsTrigger value="PUBLISHED">Published</TabsTrigger>
+                  <TabsTrigger value="ACTIVE">Active</TabsTrigger>
+                </>
+              )}
               <TabsTrigger value="TEMPLATES">Templates</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -99,43 +132,105 @@ export function DashboardPage() {
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="h-4 w-4" /> Create Form</Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Form</DialogTitle>
-              </DialogHeader>
-              <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Form Title</label>
-                  <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. Admission Form 2026" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Paper Size</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="paperSize" 
-                        value="A4" 
-                        checked={paperSize === 'A4'} 
-                        onChange={() => setPaperSize('A4')}
-                        className="w-4 h-4 text-purple-600"
-                      />
-                      <span>A4</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="paperSize" 
-                        value="A3" 
-                        checked={paperSize === 'A3'} 
-                        onChange={() => setPaperSize('A3')}
-                        className="w-4 h-4 text-purple-600"
-                      />
-                      <span>A3</span>
-                    </label>
+            <DialogContent className="max-w-xl bg-white rounded-3xl p-0 overflow-hidden border-0 shadow-2xl">
+              <div className="p-8">
+                <DialogHeader className="mb-8 flex flex-row items-center gap-4">
+                  <div className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-100 shrink-0">
+                    <FileText className="w-6 h-6 text-blue-600 fill-blue-600" />
+                  </div>
+                  <div className="space-y-1 text-left pt-1">
+                    <DialogTitle className="text-2xl font-bold text-gray-900">Create New Form</DialogTitle>
+                    <p className="text-sm text-gray-500">Set up your form details and get started.</p>
+                  </div>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-800">Form Title <span className="text-red-500">*</span></label>
+                    <Input 
+                      value={newTitle} 
+                      onChange={e => setNewTitle(e.target.value)} 
+                      placeholder="e.g. Admission Form 2026" 
+                      className="h-12 border-2 border-blue-200 focus-visible:border-blue-400 focus-visible:ring-4 focus-visible:ring-blue-100 rounded-xl transition-all text-base text-gray-900"
+                    />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <label className="text-sm font-bold text-gray-800">Paper Size</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* A4 Card */}
+                      <label 
+                        className={`relative flex flex-row items-start gap-4 p-4 cursor-pointer rounded-xl border-2 transition-all ${
+                          paperSize === 'A4' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name="paperSize" 
+                          value="A4" 
+                          checked={paperSize === 'A4'} 
+                          onChange={() => setPaperSize('A4')}
+                          className="sr-only"
+                        />
+                        <div className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${
+                          paperSize === 'A4' ? 'border-blue-600' : 'border-gray-300'
+                        }`}>
+                          {paperSize === 'A4' && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-gray-900">A4</h4>
+                          <div className="text-xs text-gray-500 space-y-0.5">
+                            <p>210 × 297 mm</p>
+                            <p>Standard size, widely used</p>
+                          </div>
+                        </div>
+                      </label>
+                      
+                      {/* A3 Card */}
+                      <label 
+                        className={`relative flex flex-row items-start gap-4 p-4 cursor-pointer rounded-xl border-2 transition-all ${
+                          paperSize === 'A3' ? 'border-gray-300 bg-gray-50/50' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input 
+                          type="radio" 
+                          name="paperSize" 
+                          value="A3" 
+                          checked={paperSize === 'A3'} 
+                          onChange={() => setPaperSize('A3')}
+                          className="sr-only"
+                        />
+                        <div className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-full border-2 shrink-0 ${
+                          paperSize === 'A3' ? 'border-gray-500' : 'border-gray-300'
+                        }`}>
+                          {paperSize === 'A3' && <div className="w-2.5 h-2.5 rounded-full bg-gray-500" />}
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-gray-900">A3</h4>
+                          <div className="text-xs text-gray-500 space-y-0.5">
+                            <p>297 × 420 mm</p>
+                            <p>Larger space for detailed forms</p>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2 flex items-center justify-end gap-3 mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsCreateOpen(false)} 
+                      className="px-6 py-2.5 h-auto font-medium text-gray-600 rounded-lg hover:bg-gray-50 border-gray-200"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleCreate} 
+                      className="px-6 py-2.5 h-auto bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg gap-2 shadow-sm shadow-blue-200 transition-all"
+                    >
+                      Create & Open Builder <ArrowRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-                <Button onClick={handleCreate} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all">Create & Open Builder</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -160,6 +255,7 @@ export function DashboardPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Name</th>
+                  {isAdminView && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -172,6 +268,12 @@ export function DashboardPage() {
                       <div className="font-medium text-gray-900">{form.title}</div>
                       <div className="text-sm text-gray-500">/{form.slug}</div>
                     </td>
+                    {isAdminView && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{form.user?.name}</div>
+                        <div className="text-xs text-gray-500">{form.user?.email}</div>
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge variant={form.status === 'ACTIVE' ? 'default' : form.status === 'DRAFT' ? 'secondary' : 'outline'}>
                         {form.status}
@@ -182,6 +284,11 @@ export function DashboardPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
+                        {isAdminView && statusFilter === 'PENDING' && (
+                          <Button variant="outline" size="sm" onClick={() => handleApprove(form.id)} className="mr-2 border-green-200 text-green-700 hover:bg-green-50 gap-2">
+                            <CheckCircle className="h-4 w-4" /> Approve
+                          </Button>
+                        )}
                         {form.status === 'ACTIVE' && (
                           <Button variant="ghost" size="icon" onClick={() => setShareSlug(form.slug)} title="Share Form">
                             <Share2 className="h-4 w-4 text-green-600" />

@@ -10,6 +10,7 @@ interface CanvasElementProps {
   scale: number;
   onSelect: (id: string) => void;
   editor: A4EditorReturn;
+  isPreview?: boolean;
 }
 
 const HANDLE_SIZE = 8;
@@ -298,15 +299,38 @@ function renderElementContent(
         gap: 4,
       }}
     >
-      <label
-        style={{
-          fontSize: s.fontSize - 2,
-          color: "#374151",
-          fontWeight: "bold",
-        }}
-      >
-        {element.label || element.content}
-      </label>
+      {isEditing ? (
+        <div
+          ref={editRef}
+          contentEditable
+          suppressContentEditableWarning
+          style={{
+            fontSize: s.fontSize - 2,
+            color: "#374151",
+            fontWeight: "bold",
+            outline: "2px solid #3b82f6",
+            outlineOffset: 2,
+            borderRadius: 3,
+            padding: "1px 4px",
+            minHeight: 20,
+            whiteSpace: "pre-wrap",
+            background: "#eff6ff",
+          }}
+          onBlur={handleEditBlur}
+        />
+      ) : (
+        <label
+          style={{
+            fontSize: s.fontSize - 2,
+            color: "#374151",
+            fontWeight: "bold",
+            cursor: "inherit",
+          }}
+          title="Double-click to edit label"
+        >
+          {element.label || element.content}
+        </label>
+      )}
       {isTextArea ? (
         <textarea
           style={{ ...commonInputStyle, color: "#9ca3af" }}
@@ -335,6 +359,7 @@ export function CanvasElementComponent({
   scale,
   onSelect,
   editor,
+  isPreview = false,
 }: CanvasElementProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -356,8 +381,46 @@ export function CanvasElementComponent({
     element.type === "subheading" ||
     element.type === "paragraph";
 
+  // Field elements support label editing on double click
+  const isField = element.type.startsWith('field_') && element.type !== 'field_divider'
+
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isText && !isField) return;
+      e.stopPropagation();
+      setIsEditing(true);
+      setTimeout(() => {
+        if (editRef.current) {
+          editRef.current.textContent = isText ? element.content : (element.label || element.content);
+          editRef.current.focus();
+          const range = document.createRange();
+          range.selectNodeContents(editRef.current);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+      }, 0);
+    },
+    [isText, isField, element.content, element.label],
+  );
+
+  const handleEditBlur = useCallback(() => {
+    setIsEditing(false);
+    const text = editRef.current?.textContent || "";
+    if (isField) {
+      if (text !== element.label) {
+        editor.updateElement(element.id, { label: text, content: text });
+      }
+    } else {
+      if (text !== element.content) {
+        editor.updateElement(element.id, { content: text });
+      }
+    }
+  }, [element, editor, isField]);
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      if (isPreview) return;  // block in preview
       if (isEditing) return;
       e.stopPropagation();
       onSelect(element.id);
@@ -369,36 +432,9 @@ export function CanvasElementComponent({
         elY: element.y,
       };
     },
-    [isEditing, element, onSelect],
+    [isPreview, isEditing, element, onSelect],
   );
 
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isText) return;
-      e.stopPropagation();
-      setIsEditing(true);
-      setTimeout(() => {
-        if (editRef.current) {
-          editRef.current.textContent = element.content;
-          editRef.current.focus();
-          const range = document.createRange();
-          range.selectNodeContents(editRef.current);
-          const sel = window.getSelection();
-          sel?.removeAllRanges();
-          sel?.addRange(range);
-        }
-      }, 0);
-    },
-    [isText, element.content],
-  );
-
-  const handleEditBlur = useCallback(() => {
-    setIsEditing(false);
-    const text = editRef.current?.textContent || "";
-    if (text !== element.content) {
-      editor.updateElement(element.id, { content: text });
-    }
-  }, [element, editor]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent, dir: ResizeDirection) => {
@@ -511,14 +547,32 @@ export function CanvasElementComponent({
         height: element.height,
         opacity: s.opacity,
         backgroundColor: s.bgColor !== "transparent" ? s.bgColor : undefined,
-        cursor: isDragging ? "grabbing" : isEditing ? "text" : "grab",
+        cursor: isPreview
+          ? "default"
+          : isDragging ? "grabbing" : isEditing ? "text" : "grab",
         userSelect: "none",
         boxSizing: "border-box",
-        outline: isSelected ? "2px solid #3b82f6" : "none",
+        outline: !isPreview && isDragging && element._overlapping
+          ? "2px solid #ef4444"
+          : !isPreview && isSelected
+          ? "2px solid #3b82f6"
+          : "none",
         outlineOffset: "1px",
+        transition: isDragging ? "none" : "outline 0.1s",
+        pointerEvents: isPreview ? "none" : "auto",
       }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
+      onDragOver={(e) => {
+        // Allow drop from element library - must preventDefault for drop to fire
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+        // Let it bubble up to the canvas
+      }}
+      onDrop={(e) => {
+        // Let the event bubble up to canvas's onDrop handler
+        // (do NOT stopPropagation here)
+      }}
     >
       {renderElementContent(element, isEditing, editRef, handleEditBlur, editor)}
 
