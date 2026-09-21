@@ -13,6 +13,17 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          pdf: ['jspdf', 'html2canvas']
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {
