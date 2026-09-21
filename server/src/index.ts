@@ -56,6 +56,10 @@ app.get('/api/health', (_req, res) => {
 })
 
 
+app.get('/', (_req, res) => {
+  res.json({ success: true, message: 'Welcome to Form Builder API!' })
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/forms', formsRoutes)
 app.use('/api/forms', versionsRoutes)    // nested: /api/forms/:id/versions
