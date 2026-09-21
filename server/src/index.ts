@@ -26,7 +26,13 @@ const app = express()
 app.use(helmet())
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+      if (!origin || origin === config.clientUrl || origin.startsWith('http://localhost:')) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'))
+      }
+    },
     credentials: true,
   })
 )
