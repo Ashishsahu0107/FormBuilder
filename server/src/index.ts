@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit'
 import { connectMongoDB } from '@/config/mongodb'
 import { errorHandler, notFound } from '@/middleware/error.middleware'
 import { config } from '@/config'
+import { seedAdmin } from '@/utils/seed'
 
 
 import authRoutes from '@/modules/auth/auth.routes'
