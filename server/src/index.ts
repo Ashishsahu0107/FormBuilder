@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 
 import { connectMongoDB } from '@/config/mongodb'
-import { prisma } from '@/lib/prisma'
 import { errorHandler, notFound } from '@/middleware/error.middleware'
 import { config } from '@/config'
 
@@ -82,9 +81,7 @@ const start = async () => {
     // Connect MongoDB
     await connectMongoDB()
 
-    // Test Prisma (PostgreSQL) connection
-    await prisma.$connect()
-    console.log('PostgreSQL connected via Prisma')
+
 
     app.listen(config.port, () => {
       console.log(`Server running on http://localhost:${config.port}`)
@@ -99,7 +96,7 @@ const start = async () => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  await prisma.$disconnect()
+
   console.log('Server stopped gracefully')
   process.exit(0)
 })

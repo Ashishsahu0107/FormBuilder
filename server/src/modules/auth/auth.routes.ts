@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
+import { User } from '@/models/User.model'
 import { validate } from '@/middleware/validate.middleware'
 import { authenticate, AuthRequest } from '@/middleware/auth.middleware'
 import { sendSuccess, sendError } from '@/utils/response'
@@ -24,37 +24,39 @@ const loginSchema = z.object({
   password: z.string().min(1),
 })
 
-// --- POST /api ---
+// --- POST /api/auth/register ---
 router.post('/register', validate(registerSchema), async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body
-    const existing = await prisma.user.findUnique({ where: { email } })
+    const existing = await User.findOne({ email })
     if (existing) {
       return sendError(res, 'Email already registered', 409)
     }
     const hashed = await bcrypt.hash(password, 12)
-    const user = await prisma.user.create({
-      data: { name, email, password: hashed },
-      select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
-    })
+    const user = await User.create({ name, email, password: hashed })
+    
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.name },
       config.jwtSecret,
       { expiresIn: config.jwtExpiresIn as any }
     )
-    return sendSuccess(res, { user, token }, 'Registered successfully', 201)
+    
+    // Convert to JSON and remove password
+    const userJson = user.toJSON()
+    
+    return sendSuccess(res, { user: userJson, token }, 'Registered successfully', 201)
   } catch (error) {
     console.error('[POST /auth/register]', error)
     return sendError(res, 'Registration failed')
   }
 })
 
-// --- POST /api ---
+// --- POST /api/auth/login ---
 router.post('/login', validate(loginSchema), async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body
-    const user = await prisma.user.findUnique({ where: { email } })
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const user = await User.findOne({ email })
+    if (!user || !(await bcrypt.compare(password, user.password || ''))) {
       return sendError(res, 'Invalid credentials', 401)
     }
     if (!user.isActive) {
@@ -65,25 +67,22 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response)
       config.jwtSecret,
       { expiresIn: config.jwtExpiresIn as any }
     )
-    return sendSuccess(res, {
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, isActive: user.isActive },
-      token,
-    })
+    
+    const userJson = user.toJSON()
+    
+    return sendSuccess(res, { user: userJson, token })
   } catch (error) {
     console.error('[POST /auth/login]', error)
     return sendError(res, 'Login failed')
   }
 })
 
-// --- GET /api ---
+// --- GET /api/auth/me ---
 router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true, updatedAt: true },
-    })
+    const user = await User.findById(req.user!.id)
     if (!user) return sendError(res, 'User not found', 404)
-    return sendSuccess(res, user)
+    return sendSuccess(res, user.toJSON())
   } catch (error) {
     console.error('[GET /auth/me]', error)
     return sendError(res, 'Failed to fetch user')
@@ -103,22 +102,16 @@ const resetPasswordSchema = z.object({
 router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Request, res: Response) => {
   try {
     const { email } = req.body
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await User.findOne({ email })
     if (!user) {
-      // Don't leak whether user exists, just return success
       return sendSuccess(res, null, 'If an account exists, a password reset link has been sent')
     }
     
-    // Generate a simple token (in production use crypto.randomBytes)
     const resetToken = Math.floor(100000 + Math.random() * 900000).toString()
     const resetTokenExpiry = new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hour
     
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { resetToken, resetTokenExpiry }
-    })
+    await User.findByIdAndUpdate(user.id, { resetToken, resetTokenExpiry })
     
-    // Send email with OTP
     const emailSent = await sendEmail(
       email,
       'Password Reset OTP',
@@ -139,12 +132,10 @@ router.post('/forgot-password', validate(forgotPasswordSchema), async (req: Requ
 router.post('/reset-password', validate(resetPasswordSchema), async (req: Request, res: Response) => {
   try {
     const { email, otp, password } = req.body
-    const user = await prisma.user.findFirst({
-      where: {
-        email: email,
-        resetToken: otp,
-        resetTokenExpiry: { gt: new Date() }
-      }
+    const user = await User.findOne({
+      email: email,
+      resetToken: otp,
+      resetTokenExpiry: { $gt: new Date() }
     })
     
     if (!user) {
@@ -152,13 +143,9 @@ router.post('/reset-password', validate(resetPasswordSchema), async (req: Reques
     }
     
     const hashed = await bcrypt.hash(password, 12)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashed,
-        resetToken: null,
-        resetTokenExpiry: null
-      }
+    await User.findByIdAndUpdate(user.id, {
+      password: hashed,
+      $unset: { resetToken: 1, resetTokenExpiry: 1 }
     })
     
     return sendSuccess(res, null, 'Password has been reset successfully')

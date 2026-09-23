@@ -1,20 +1,18 @@
 import { Router, Response } from 'express'
 import { Parser } from 'json2csv'
-import { prisma } from '@/lib/prisma'
+import { Form } from '@/models/Form.model'
 import { authenticate, AuthRequest } from '@/middleware/auth.middleware'
 import { Submission } from '@/models/Submission.model'
 import { sendSuccess, sendError, sendPaginated } from '@/utils/response'
 
 const router = Router({ mergeParams: true })
 
-// Helper to verify form access
 const verifyFormAccess = async (formId: string, userId: string, role: string) => {
-  const form = await prisma.form.findUnique({ where: { id: formId } })
+  const form = await Form.findById(formId)
   if (!form) return null
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || form.createdBy === userId) {
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN' || form.createdBy.toString() === userId) {
     return form
   }
-  // Check if they are an approver for this form (simplified for now)
   return null
 }
 
@@ -29,7 +27,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const form = await verifyFormAccess(formId, req.user!.id, req.user!.role)
     if (!form) return sendError(res, 'Form not found or access denied', 404)
 
-    const query: any = { formSlug: form.slug }
+    const query: any = { formId: form.id }
     if (req.query.startDate && req.query.endDate) {
       query.createdAt = {
         $gte: new Date(req.query.startDate as string),
@@ -56,7 +54,7 @@ router.get('/export', authenticate, async (req: AuthRequest, res: Response) => {
     const form = await verifyFormAccess(formId, req.user!.id, req.user!.role)
     if (!form) return sendError(res, 'Form not found or access denied', 404)
 
-    const query: any = { formSlug: form.slug }
+    const query: any = { formId: form.id }
     if (req.query.startDate && req.query.endDate) {
       query.createdAt = {
         $gte: new Date(req.query.startDate as string),
@@ -67,14 +65,12 @@ router.get('/export', authenticate, async (req: AuthRequest, res: Response) => {
     const submissions = await Submission.find(query).sort({ createdAt: -1 })
     if (!submissions.length) return sendError(res, 'No submissions to export', 404)
 
-    // Flatten data for CSV
     const flattenedData = submissions.map((sub: any) => {
       const flat: any = {
         Reference: sub.referenceNumber,
         SubmittedAt: sub.createdAt.toISOString(),
         Status: sub.status,
       }
-      // Assuming sub.data is a flat key-value object from the form fields
       if (sub.data && typeof sub.data === 'object') {
         Object.entries(sub.data).forEach(([key, value]) => {
           flat[key] = Array.isArray(value) ? value.join(', ') : value
@@ -119,14 +115,13 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res: Response) =
     const form = await verifyFormAccess(formId, req.user!.id, req.user!.role)
     if (!form) return sendError(res, 'Form not found or access denied', 404)
 
-    const totalSubmissions = await Submission.countDocuments({ formSlug: form.slug })
+    const totalSubmissions = await Submission.countDocuments({ formId: form.id })
     
-    // Group submissions by day for the last 30 days
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
     const dailySubmissions = await Submission.aggregate([
-      { $match: { formSlug: form.slug, createdAt: { $gte: thirtyDaysAgo } } },
+      { $match: { formId: form.id, createdAt: { $gte: thirtyDaysAgo } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -137,9 +132,9 @@ router.get('/analytics', authenticate, async (req: AuthRequest, res: Response) =
     ])
 
     return sendSuccess(res, {
-      views: (form as any).views || 0,
+      views: form.views || 0,
       totalSubmissions,
-      conversionRate: (form as any).views ? ((totalSubmissions / (form as any).views) * 100).toFixed(2) : 0,
+      conversionRate: form.views ? ((totalSubmissions / form.views) * 100).toFixed(2) : 0,
       dailySubmissions: dailySubmissions.map(d => ({ date: d._id, count: d.count }))
     })
   } catch (error) {

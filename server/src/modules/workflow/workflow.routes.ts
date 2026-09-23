@@ -1,300 +1,168 @@
-import { Router, Response } from 'express'
-import { prisma } from '@/lib/prisma'
-import { authenticate, authorize, AuthRequest } from '@/middleware/auth.middleware'
-import { sendSuccess, sendError } from '@/utils/response'
+import { Router, Request, Response } from 'express'
+import { Form } from '@/models/Form.model'
+import { FormVersion } from '@/models/FormVersion.model'
+import { FormApproval } from '@/models/FormApproval.model'
 import { AuditLog } from '@/models/AuditLog.model'
+import { authenticate, AuthRequest, authorize } from '@/middleware/auth.middleware'
+import { sendSuccess, sendError } from '@/utils/response'
 
-const router = Router()
+const router = Router({ mergeParams: true })
 
-// â”€â”€â”€ Helper: log audit event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-const logAudit = async (
-  userId: string,
-  action: string,
-  formId: string,
-  details: Record<string, unknown>,
-  ip?: string
-) => {
-  await AuditLog.create({
-    userId,
-    action,
-    resource: 'Form',
-    resourceId: formId,
-    details,
-    ipAddress: ip,
-  })
+const logAction = async (formId: string, action: string, userId: string, details?: string) => {
+  await AuditLog.create({ resourceId: formId, resource: 'FORM', action, userId, details: details ? { message: details } : undefined })
 }
 
-// â”€â”€â”€ Helper: record FormApproval â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// POST /api/forms/:id/submit-review
+router.post('/:id/submit-review', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
+    if (form.createdBy.toString() !== req.user!.id) return sendError(res, 'Unauthorized', 403)
 
-const recordApproval = async (
-  formId: string,
-  versionId: string,
-  by: string,
-  action: string,
-  comment?: string
-) => {
-  await prisma.formApproval.create({
-    data: { formId, versionId, by, action, comment },
-  })
-}
+    const version = await FormVersion.findOne({ _id: form.currentVersionId })
+    if (!version || version.status !== 'DRAFT') return sendError(res, 'Only DRAFT versions can be submitted for review', 400)
 
-// â”€â”€â”€ Helper: get form with current version (authorized) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    version.status = 'UNDER_REVIEW'
+    await version.save()
 
-const getForm = async (formId: string) => {
-  return prisma.form.findFirst({
-    where: { id: formId, deletedAt: null },
-    include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
-  })
-}
+    form.status = 'UNDER_REVIEW'
+    await form.save()
 
-// â”€â”€â”€ POST /api/forms/:id/submit-review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// DRAFT â†’ UNDER_REVIEW  (FORM_BUILDER)
-router.post(
-  '/:id/submit-review',
-  authenticate,
-  authorize('FORM_BUILDER', 'ADMIN', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.createdBy !== req.user!.id && req.user!.role !== 'SUPER_ADMIN') {
-        return sendError(res, 'Forbidden', 403)
-      }
-      if (form.status !== 'DRAFT') {
-        return sendError(res, `Cannot submit for review from status: ${form.status}`, 400)
-      }
-      if (!form.currentVersionId) {
-        return sendError(res, 'No current version found', 400)
-      }
+    await FormApproval.create({ formId: form.id, versionId: version.id, action: 'SUBMITTED_FOR_REVIEW', by: req.user!.id })
+    await logAction(form.id, 'SUBMIT_REVIEW', req.user!.id)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'UNDER_REVIEW' },
-      })
-
-      await prisma.formVersion.update({
-        where: { id: form.currentVersionId },
-        data: { status: 'UNDER_REVIEW' },
-      })
-
-      await recordApproval(form.id, form.currentVersionId, req.user!.id, 'SUBMIT_REVIEW', req.body.comment)
-      await logAudit(req.user!.id, 'SUBMIT_REVIEW', form.id, { fromStatus: 'DRAFT', toStatus: 'UNDER_REVIEW' }, req.ip)
-
-      return sendSuccess(res, updated, 'Form submitted for review')
-    } catch (err) {
-      console.error('[POST /forms/:id/submit-review]', err)
-      return sendError(res, 'Failed to submit for review')
-    }
+    return sendSuccess(res, null, 'Form submitted for review')
+  } catch (error) {
+    console.error('[POST /workflow/submit-review]', error)
+    return sendError(res, 'Failed to submit form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/approve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// UNDER_REVIEW â†’ APPROVED  (ADMIN / APPROVER)
-router.post(
-  '/:id/approve',
-  authenticate,
-  authorize('ADMIN', 'APPROVER', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status !== 'UNDER_REVIEW') {
-        return sendError(res, `Cannot approve from status: ${form.status}`, 400)
-      }
-      if (!form.currentVersionId) return sendError(res, 'No current version found', 400)
+// POST /api/forms/:id/approve
+router.post('/:id/approve', authenticate, authorize('', '', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'APPROVED' },
-      })
+    const version = await FormVersion.findOne({ _id: form.currentVersionId })
+    if (!version || version.status !== 'UNDER_REVIEW') return sendError(res, 'Form is not under review', 400)
 
-      await prisma.formVersion.update({
-        where: { id: form.currentVersionId },
-        data: { status: 'APPROVED', approvedBy: req.user!.id },
-      })
+    version.status = 'APPROVED'
+    version.approvedBy = req.user!.id
+    await version.save()
 
-      await recordApproval(form.id, form.currentVersionId, req.user!.id, 'APPROVE', req.body.comment)
-      await logAudit(req.user!.id, 'APPROVE', form.id, { fromStatus: 'UNDER_REVIEW', toStatus: 'APPROVED', comment: req.body.comment }, req.ip)
+    form.status = 'APPROVED'
+    await form.save()
 
-      return sendSuccess(res, updated, 'Form approved')
-    } catch (err) {
-      console.error('[POST /forms/:id/approve]', err)
-      return sendError(res, 'Failed to approve form')
-    }
+    await FormApproval.create({ formId: form.id, versionId: version.id, action: 'APPROVED', comment: req.body.comment, by: req.user!.id })
+    await logAction(form.id, 'APPROVE', req.user!.id, req.body.comment)
+
+    return sendSuccess(res, null, 'Form approved')
+  } catch (error) {
+    console.error('[POST /workflow/approve]', error)
+    return sendError(res, 'Failed to approve form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// UNDER_REVIEW â†’ DRAFT with comment  (ADMIN / APPROVER)
-router.post(
-  '/:id/reject',
-  authenticate,
-  authorize('ADMIN', 'APPROVER', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status !== 'UNDER_REVIEW') {
-        return sendError(res, `Cannot reject from status: ${form.status}`, 400)
-      }
-      if (!form.currentVersionId) return sendError(res, 'No current version found', 400)
+// POST /api/forms/:id/reject
+router.post('/:id/reject', authenticate, authorize('', '', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.body.comment) return sendError(res, 'Comment is required for rejection', 400)
+    
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'DRAFT' },
-      })
+    const version = await FormVersion.findOne({ _id: form.currentVersionId })
+    if (!version || version.status !== 'UNDER_REVIEW') return sendError(res, 'Form is not under review', 400)
 
-      await prisma.formVersion.update({
-        where: { id: form.currentVersionId },
-        data: { status: 'DRAFT' },
-      })
+    version.status = 'DRAFT'
+    await version.save()
 
-      await recordApproval(form.id, form.currentVersionId, req.user!.id, 'REJECT', req.body.comment)
-      await logAudit(req.user!.id, 'REJECT', form.id, { fromStatus: 'UNDER_REVIEW', toStatus: 'DRAFT', comment: req.body.comment }, req.ip)
+    form.status = 'DRAFT'
+    await form.save()
 
-      return sendSuccess(res, updated, 'Form rejected and returned to draft')
-    } catch (err) {
-      console.error('[POST /forms/:id/reject]', err)
-      return sendError(res, 'Failed to reject form')
-    }
+    await FormApproval.create({ formId: form.id, versionId: version.id, action: 'REJECTED', comment: req.body.comment, by: req.user!.id })
+    await logAction(form.id, 'REJECT', req.user!.id, req.body.comment)
+
+    return sendSuccess(res, null, 'Form rejected')
+  } catch (error) {
+    console.error('[POST /workflow/reject]', error)
+    return sendError(res, 'Failed to reject form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/publish â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// APPROVED â†’ PUBLISHED  (ADMIN)
-router.post(
-  '/:id/publish',
-  authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status !== 'APPROVED') {
-        return sendError(res, `Cannot publish from status: ${form.status}`, 400)
-      }
-      if (!form.currentVersionId) return sendError(res, 'No current version found', 400)
+// POST /api/forms/:id/publish
+router.post('/:id/publish', authenticate, authorize('', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
 
-      const now = new Date()
+    const version = await FormVersion.findOne({ _id: form.currentVersionId })
+    if (!version || version.status !== 'APPROVED') return sendError(res, 'Only APPROVED versions can be published', 400)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'PUBLISHED' },
-      })
+    version.status = 'PUBLISHED'
+    version.publishedAt = new Date()
+    await version.save()
 
-      await prisma.formVersion.update({
-        where: { id: form.currentVersionId },
-        data: { status: 'PUBLISHED', publishedAt: now },
-      })
+    form.status = 'PUBLISHED'
+    await form.save()
 
-      await recordApproval(form.id, form.currentVersionId, req.user!.id, 'PUBLISH')
-      await logAudit(req.user!.id, 'PUBLISH', form.id, { fromStatus: 'APPROVED', toStatus: 'PUBLISHED', publishedAt: now }, req.ip)
-
-      return sendSuccess(res, updated, 'Form published')
-    } catch (err) {
-      console.error('[POST /forms/:id/publish]', err)
-      return sendError(res, 'Failed to publish form')
-    }
+    await logAction(form.id, 'PUBLISH', req.user!.id)
+    return sendSuccess(res, null, 'Form published successfully')
+  } catch (error) {
+    console.error('[POST /workflow/publish]', error)
+    return sendError(res, 'Failed to publish form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/activate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PUBLISHED â†’ ACTIVE  (ADMIN)
-router.post(
-  '/:id/activate',
-  authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status !== 'PUBLISHED') {
-        return sendError(res, `Cannot activate from status: ${form.status}`, 400)
-      }
+// POST /api/forms/:id/activate
+router.post('/:id/activate', authenticate, authorize('', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
+    if (form.status !== 'PUBLISHED' && form.status !== 'DEACTIVATED') return sendError(res, 'Invalid status for activation', 400)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'ACTIVE' },
-      })
+    form.status = 'ACTIVE'
+    await form.save()
 
-      if (form.currentVersionId) {
-        await recordApproval(form.id, form.currentVersionId, req.user!.id, 'ACTIVATE')
-      }
-      await logAudit(req.user!.id, 'ACTIVATE', form.id, { fromStatus: 'PUBLISHED', toStatus: 'ACTIVE' }, req.ip)
-
-      return sendSuccess(res, updated, 'Form activated')
-    } catch (err) {
-      console.error('[POST /forms/:id/activate]', err)
-      return sendError(res, 'Failed to activate form')
-    }
+    await logAction(form.id, 'ACTIVATE', req.user!.id)
+    return sendSuccess(res, null, 'Form is now active and ready for submissions')
+  } catch (error) {
+    return sendError(res, 'Failed to activate form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/deactivate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ACTIVE â†’ DEACTIVATED  (ADMIN)
-router.post(
-  '/:id/deactivate',
-  authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status !== 'ACTIVE') {
-        return sendError(res, `Cannot deactivate from status: ${form.status}`, 400)
-      }
+// POST /api/forms/:id/deactivate
+router.post('/:id/deactivate', authenticate, authorize('', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
+    if (form.status !== 'ACTIVE') return sendError(res, 'Only ACTIVE forms can be deactivated', 400)
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'DEACTIVATED' },
-      })
+    form.status = 'DEACTIVATED'
+    await form.save()
 
-      if (form.currentVersionId) {
-        await recordApproval(form.id, form.currentVersionId, req.user!.id, 'DEACTIVATE', req.body.comment)
-      }
-      await logAudit(req.user!.id, 'DEACTIVATE', form.id, { fromStatus: 'ACTIVE', toStatus: 'DEACTIVATED', comment: req.body.comment }, req.ip)
-
-      return sendSuccess(res, updated, 'Form deactivated')
-    } catch (err) {
-      console.error('[POST /forms/:id/deactivate]', err)
-      return sendError(res, 'Failed to deactivate form')
-    }
+    await logAction(form.id, 'DEACTIVATE', req.user!.id)
+    return sendSuccess(res, null, 'Form deactivated')
+  } catch (error) {
+    return sendError(res, 'Failed to deactivate form')
   }
-)
+})
 
-// â”€â”€â”€ POST /api/forms/:id/archive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Any status â†’ ARCHIVED  (ADMIN / SUPER_ADMIN)
-router.post(
-  '/:id/archive',
-  authenticate,
-  authorize('ADMIN', 'SUPER_ADMIN'),
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const form = await getForm(req.params.id as string)
-      if (!form) return sendError(res, 'Form not found', 404)
-      if (form.status === 'ARCHIVED') {
-        return sendError(res, 'Form is already archived', 400)
-      }
+// POST /api/forms/:id/archive
+router.post('/:id/archive', authenticate, authorize('', ''), async (req: AuthRequest, res: Response) => {
+  try {
+    const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
+    if (!form) return sendError(res, 'Form not found', 404)
 
-      const prevStatus = form.status
+    form.status = 'ARCHIVED'
+    await form.save()
 
-      const updated = await prisma.form.update({
-        where: { id: form.id },
-        data: { status: 'ARCHIVED' },
-      })
-
-      if (form.currentVersionId) {
-        await recordApproval(form.id, form.currentVersionId, req.user!.id, 'ARCHIVE', req.body.comment)
-      }
-      await logAudit(req.user!.id, 'ARCHIVE', form.id, { fromStatus: prevStatus, toStatus: 'ARCHIVED', comment: req.body.comment }, req.ip)
-
-      return sendSuccess(res, updated, 'Form archived')
-    } catch (err) {
-      console.error('[POST /forms/:id/archive]', err)
-      return sendError(res, 'Failed to archive form')
-    }
+    await logAction(form.id, 'ARCHIVE', req.user!.id)
+    return sendSuccess(res, null, 'Form archived')
+  } catch (error) {
+    return sendError(res, 'Failed to archive form')
   }
-)
+})
 
 export default router
