@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
     setIsLoading(true)
     setError('')
     try {
-      const res = await forgotPassword(email)
+      await forgotPassword(email)
       setStep('otp')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to process request')
@@ -165,7 +165,7 @@ export function ForgotPasswordPage() {
                   <div className="space-y-2">
                     <Label htmlFor="password">New Password</Label>
                     <Input 
-                      id="password" type="password" placeholder="••••••••" minLength={4}
+                      id="password" type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minLength={4}
                       value={password} onChange={e => setPassword(e.target.value)} required 
                       className="bg-white/50 focus:bg-white transition-colors"
                     />
@@ -174,7 +174,7 @@ export function ForgotPasswordPage() {
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <Input 
-                      id="confirmPassword" type="password" placeholder="••••••••" minLength={4}
+                      id="confirmPassword" type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" minLength={4}
                       value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required 
                       className="bg-white/50 focus:bg-white transition-colors"
                     />

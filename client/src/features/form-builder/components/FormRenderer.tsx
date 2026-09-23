@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import type { FormSchema, FormSection, FormField, Condition, LogicRule } from '../types/schema'
+import type { FormSchema, FormSection, FormField, Condition } from '../types/schema'
 import { FieldRenderer } from './fields/FieldRenderer'
 import { Button } from '@/components/ui/button'
 
@@ -29,7 +29,7 @@ export function FormRenderer({ schema, mode = 'public', onSubmit }: FormRenderer
     if (mode === 'public' && schema.id) {
       const saved = localStorage.getItem('form-draft-' + schema.id)
       if (saved) {
-        try { return JSON.parse(saved) } catch (e) {}
+        try { return JSON.parse(saved) } catch {}
       }
     }
     return {}
@@ -137,7 +137,7 @@ export function FormRenderer({ schema, mode = 'public', onSubmit }: FormRenderer
   if (submitted) {
     return (
       <div className="text-center py-16">
-        <div className="text-5xl mb-4">Ã¢Å“â€¦</div>
+        <div className="text-5xl mb-4">ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦</div>
         <h2 className="text-2xl font-semibold mb-2">Thank you!</h2>
         <p className="text-gray-500">{schema.settings?.successMessage || 'Your submission has been received.'}</p>
       </div>

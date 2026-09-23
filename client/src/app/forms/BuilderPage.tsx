@@ -25,7 +25,7 @@ export function BuilderPage() {
         if (res.data.data.currentVersion) {
           setSchema(res.data.data.currentVersion.schema)
         }
-      } catch (err: any) {
+      } catch {
         setError('Failed to load form')
       } finally {
         setLoading(false)

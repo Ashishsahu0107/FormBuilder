@@ -64,7 +64,7 @@ export function BuilderHeader({ schema,
           try {
             await templatesService.create({ title, category: 'General', schema, description: schema.description })
             toast.success('Template saved!')
-          } catch (e) {
+          } catch {
             toast.error('Failed to save template')
           }
         }} className="gap-2">

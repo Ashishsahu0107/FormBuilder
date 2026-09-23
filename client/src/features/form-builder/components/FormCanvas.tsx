@@ -1,7 +1,7 @@
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useDroppable } from '@dnd-kit/core'
-import type { FormSchema, FormSection, FormField } from '../types/schema'
+import type { FormSchema } from '../types/schema'
 import { FieldRenderer } from './fields/FieldRenderer'
 import { Copy, Trash2, GripVertical } from 'lucide-react'
 

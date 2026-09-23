@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Eye, Trash, Inbox, Share2, Layers, CheckCircle, FileText, ArrowRight } from 'lucide-react'
 import { ShareDialog } from '@/features/form-builder/components/ShareDialog'
@@ -179,7 +180,7 @@ export function DashboardPage() {
                         <div className="space-y-1">
                           <h4 className="text-sm font-bold text-gray-900">A4</h4>
                           <div className="text-xs text-gray-500 space-y-0.5">
-                            <p>210 × 297 mm</p>
+                            <p>210 Ãƒâ€” 297 mm</p>
                             <p>Standard size, widely used</p>
                           </div>
                         </div>
@@ -207,7 +208,7 @@ export function DashboardPage() {
                         <div className="space-y-1">
                           <h4 className="text-sm font-bold text-gray-900">A3</h4>
                           <div className="text-xs text-gray-500 space-y-0.5">
-                            <p>297 × 420 mm</p>
+                            <p>297 Ãƒâ€” 420 mm</p>
                             <p>Larger space for detailed forms</p>
                           </div>
                         </div>
@@ -246,11 +247,13 @@ export function DashboardPage() {
               </div>
             ))}
             {(templatesData?.data.data || []).length === 0 && (
-              <div className="col-span-3 text-center py-12 text-gray-500">No templates available yet.</div>
+              <div className="col-span-1 md:col-span-3">
+                <EmptyState title="No Templates Found" description="There are no templates available in this category yet." icon={Layers} />
+              </div>
             )}
           </div>
         ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+          <div className="bg-white shadow rounded-lg overflow-x-auto overflow-y-hidden border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -310,7 +313,12 @@ export function DashboardPage() {
               </tbody>
             </table>
             {(data?.data.data || []).length === 0 && (
-              <div className="text-center py-12 text-gray-500">No forms found. Click "Create Form" to start.</div>
+              <EmptyState 
+                title="No Forms Found" 
+                description={statusFilter === 'ALL' ? "You haven't created any forms yet. Click 'Create Form' to get started." : "No forms match the current filter."} 
+                actionLabel={statusFilter === 'ALL' ? "Create Form" : undefined}
+                onAction={() => setIsCreateOpen(true)}
+              />
             )}
           </div>
         )}

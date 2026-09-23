@@ -222,7 +222,7 @@ function renderElementContent(
           gap: 4,
         }}
       >
-        <span style={{ fontSize: 24 }}>🖼</span>
+        <span style={{ fontSize: 24 }}>ðŸ–¼</span>
         <span>{element.content}</span>
       </div>
     );
@@ -569,7 +569,7 @@ export function CanvasElementComponent({
         e.dataTransfer.dropEffect = 'copy'
         // Let it bubble up to the canvas
       }}
-      onDrop={(e) => {
+      onDrop={() => {
         // Let the event bubble up to canvas's onDrop handler
         // (do NOT stopPropagation here)
       }}

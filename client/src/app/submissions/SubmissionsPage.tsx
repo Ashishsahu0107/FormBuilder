@@ -5,6 +5,7 @@ import { submissionsService } from '@/features/submissions/services/submissions.
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Eye, Activity, List } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -65,7 +66,7 @@ export function SubmissionsPage() {
           </TabsList>
 
           <TabsContent value="data">
-            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto overflow-y-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -86,8 +87,13 @@ export function SubmissionsPage() {
                       </td>
                     </tr>
                   ))}
+                  
                   {submissions.length === 0 && (
-                    <tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">No submissions yet.</td></tr>
+                    <tr>
+                      <td colSpan={4} className="p-0">
+                        <EmptyState title="No Submissions Yet" description="This form hasn't received any submissions." />
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

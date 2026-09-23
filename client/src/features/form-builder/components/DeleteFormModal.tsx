@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AlertTriangle, Trash2, Lock, Unlock, ShieldAlert } from 'lucide-react'
+import { Trash2, Lock, Unlock, ShieldAlert } from 'lucide-react'
 
 interface DeleteFormModalProps {
   form: { id: string; title: string } | null

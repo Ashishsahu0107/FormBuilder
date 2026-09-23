@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useA4Editor } from "../hooks/useA4Editor";
 import { A4Canvas } from "./A4Canvas";
 import { ElementLibrary } from "./ElementLibrary";
@@ -87,7 +87,7 @@ export function A4Editor({
     setLastSavedName(templateName);
   }, [templateName]);
 
-  // Strip transient _overlapping flag before comparing — it's not a real change
+  // Strip transient _overlapping flag before comparing â€” it's not a real change
   const stripTransient = (els: any[]) =>
     els.map(({ _overlapping, ...rest }: any) => rest)
 
@@ -143,7 +143,7 @@ export function A4Editor({
     editor.loadTemplate(template.elements);
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!onSave) return;
     setIsSaving(true);
     try {
@@ -153,7 +153,7 @@ export function A4Editor({
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [editor.elements, name, onSave]);
 
   const handleExportPDF = async () => {
     if (!canvasRef.current) return;
@@ -268,7 +268,7 @@ export function A4Editor({
             placeholder="Form name..."
           />
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded-md border border-gray-200 text-xs text-gray-600 font-medium">
-            📄 {totalPages} Page{totalPages > 1 ? 's' : ''}
+            ðŸ“„ {totalPages} Page{totalPages > 1 ? 's' : ''}
           </div>
         </div>
 
@@ -337,7 +337,7 @@ export function A4Editor({
             disabled={!isDirty || isSaving || !!(formStatus && formStatus !== "DRAFT")}
             title={
               formStatus && formStatus !== "DRAFT"
-                ? `Cannot save — form is ${formStatus}`
+                ? `Cannot save â€” form is ${formStatus}`
                 : isDirty
                 ? "You have unsaved changes"
                 : "No changes to save"
@@ -407,13 +407,13 @@ export function A4Editor({
               onClick={handleExportPDF}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
             >
-              📄 Export PDF
+              ðŸ“„ Export PDF
             </button>
             <button
               onClick={handlePrint}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
             >
-              🖨 Print
+              ðŸ–¨ Print
             </button>
           </div>
         </div>
@@ -466,7 +466,7 @@ export function A4Editor({
             </div>
           </div>
           
-          {/* Add Page Button (Floating) — hidden in preview mode */}
+          {/* Add Page Button (Floating) â€” hidden in preview mode */}
           {!isPreview && (
           <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
             <button 
@@ -504,7 +504,7 @@ export function A4Editor({
               onClick={() => setShowShortcuts(false)}
               className="text-gray-400 hover:text-gray-600"
             >
-              ✕
+              âœ•
             </button>
           </div>
           {[
