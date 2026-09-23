@@ -1,19 +1,28 @@
-﻿import { Response } from 'express'
+﻿import { Response } from "express";
 
-export const sendSuccess = <T>(res: Response, data: T, message = 'Success', statusCode = 200) => {
-  return res.status(statusCode).json({ success: true, message, data })
-}
+export const sendSuccess = <T>(
+  res: Response,
+  data: T,
+  message = "Success",
+  statusCode = 200,
+) => {
+  return res.status(statusCode).json({ success: true, message, data });
+};
 
-export const sendError = (res: Response, message = 'Error', statusCode = 500) => {
-  return res.status(statusCode).json({ success: false, message })
-}
+export const sendError = (
+  res: Response,
+  message = "Error",
+  statusCode = 500,
+) => {
+  return res.status(statusCode).json({ success: false, message });
+};
 
 export const sendPaginated = <T>(
   res: Response,
   data: T[],
   total: number,
   page: number,
-  limit: number
+  limit: number,
 ) => {
   return res.status(200).json({
     success: true,
@@ -24,5 +33,5 @@ export const sendPaginated = <T>(
       limit,
       totalPages: Math.ceil(total / limit),
     },
-  })
-}
+  });
+};

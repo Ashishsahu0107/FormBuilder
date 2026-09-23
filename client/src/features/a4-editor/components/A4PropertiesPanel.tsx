@@ -134,9 +134,7 @@ export function A4PropertiesPanel({ editor }: A4PropertiesPanelProps) {
             <input
               className="w-full border border-gray-200 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={el.placeholder || ""}
-              onChange={(e) =>
-                update({ placeholder: e.target.value })
-              }
+              onChange={(e) => update({ placeholder: e.target.value })}
               placeholder="e.g. Enter your name..."
             />
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none mt-3">

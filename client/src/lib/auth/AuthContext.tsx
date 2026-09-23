@@ -17,9 +17,13 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>
-  forgotPassword: (email: string) => Promise<{resetToken: string}>
-  resetPassword: (email: string, otp: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ resetToken: string }>;
+  resetPassword: (
+    email: string,
+    otp: string,
+    password: string,
+  ) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -44,13 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const forgotPassword = async (email: string) => {
-    const res = await api.post('/auth/forgot-password', { email })
-    return res.data.data
-  }
+    const res = await api.post("/auth/forgot-password", { email });
+    return res.data.data;
+  };
 
-  const resetPassword = async (email: string, otp: string, password: string) => {
-    await api.post('/auth/reset-password', { email, otp, password })
-  }
+  const resetPassword = async (
+    email: string,
+    otp: string,
+    password: string,
+  ) => {
+    await api.post("/auth/reset-password", { email, otp, password });
+  };
 
   const login = async (email: string, password: string) => {
     const res = await api.post("/auth/login", { email, password });
@@ -70,7 +78,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, forgotPassword, resetPassword }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        forgotPassword,
+        resetPassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

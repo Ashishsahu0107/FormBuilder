@@ -1,13 +1,13 @@
-﻿import { Schema, model, Document } from 'mongoose'
+﻿import { Schema, model, Document } from "mongoose";
 
 export interface IAuditLog extends Document {
-  userId?: string
-  action: string
-  resource: string
-  resourceId?: string
-  details?: Record<string, unknown>
-  ipAddress?: string
-  createdAt: Date
+  userId?: string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  details?: Record<string, unknown>;
+  ipAddress?: string;
+  createdAt: Date;
 }
 
 const AuditLogSchema = new Schema<IAuditLog>(
@@ -19,7 +19,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
     details: { type: Schema.Types.Mixed },
     ipAddress: { type: String },
   },
-  { timestamps: true }
-)
+  { timestamps: true },
+);
 
-export const AuditLog = model<IAuditLog>('AuditLog', AuditLogSchema)
+export const AuditLog = model<IAuditLog>("AuditLog", AuditLogSchema);

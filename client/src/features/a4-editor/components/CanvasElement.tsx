@@ -91,13 +91,13 @@ function ElementContentRenderer({
   isEditing,
   editRef,
   handleEditBlur,
-  editor
+  editor,
 }: {
-  element: CanvasElement,
-  isEditing: boolean,
-  editRef: React.RefObject<HTMLDivElement | null>,
-  handleEditBlur: () => void,
-  editor: any
+  element: CanvasElement;
+  isEditing: boolean;
+  editRef: React.RefObject<HTMLDivElement | null>;
+  handleEditBlur: () => void;
+  editor: any;
 }) {
   const s = element.style;
   const textStyle: React.CSSProperties = {
@@ -278,7 +278,7 @@ function ElementContentRenderer({
   // All other input fields
   const isTextArea =
     element.type === "field_textarea" || element.type === "field_address";
-  
+
   const commonInputStyle: React.CSSProperties = {
     width: "100%",
     flex: isTextArea ? 1 : "none",
@@ -291,7 +291,7 @@ function ElementContentRenderer({
     color: "#374151",
     outline: "none",
     fontFamily: s.fontFamily,
-    resize: "none"
+    resize: "none",
   };
 
   return (
@@ -341,7 +341,9 @@ function ElementContentRenderer({
         <textarea
           style={{ ...commonInputStyle, color: "#9ca3af" }}
           value={element.placeholder || ""}
-          onChange={(e) => editor.updateElement(element.id, { placeholder: e.target.value })}
+          onChange={(e) =>
+            editor.updateElement(element.id, { placeholder: e.target.value })
+          }
           onMouseDown={(e) => e.stopPropagation()}
           placeholder="Enter text..."
         />
@@ -350,7 +352,9 @@ function ElementContentRenderer({
           type={element.type === "field_number" ? "number" : "text"}
           style={{ ...commonInputStyle, color: "#9ca3af" }}
           value={element.placeholder || ""}
-          onChange={(e) => editor.updateElement(element.id, { placeholder: e.target.value })}
+          onChange={(e) =>
+            editor.updateElement(element.id, { placeholder: e.target.value })
+          }
           onMouseDown={(e) => e.stopPropagation()}
           placeholder="Enter text..."
         />
@@ -388,7 +392,8 @@ export function CanvasElementComponent({
     element.type === "paragraph";
 
   // Field elements support label editing on double click
-  const isField = element.type.startsWith('field_') && element.type !== 'field_divider'
+  const isField =
+    element.type.startsWith("field_") && element.type !== "field_divider";
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -397,7 +402,9 @@ export function CanvasElementComponent({
       setIsEditing(true);
       setTimeout(() => {
         if (editRef.current) {
-          editRef.current.textContent = isText ? element.content : (element.label || element.content);
+          editRef.current.textContent = isText
+            ? element.content
+            : element.label || element.content;
           editRef.current.focus();
           const range = document.createRange();
           range.selectNodeContents(editRef.current);
@@ -426,7 +433,7 @@ export function CanvasElementComponent({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (isPreview) return;  // block in preview
+      if (isPreview) return; // block in preview
       if (isEditing) return;
       e.stopPropagation();
       onSelect(element.id);
@@ -440,7 +447,6 @@ export function CanvasElementComponent({
     },
     [isPreview, isEditing, element, onSelect],
   );
-
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent, dir: ResizeDirection) => {
@@ -555,14 +561,19 @@ export function CanvasElementComponent({
         backgroundColor: s.bgColor !== "transparent" ? s.bgColor : undefined,
         cursor: isPreview
           ? "default"
-          : isDragging ? "grabbing" : isEditing ? "text" : "grab",
+          : isDragging
+            ? "grabbing"
+            : isEditing
+              ? "text"
+              : "grab",
         userSelect: "none",
         boxSizing: "border-box",
-        outline: !isPreview && isDragging && element._overlapping
-          ? "2px solid #ef4444"
-          : !isPreview && isSelected
-          ? "2px solid #3b82f6"
-          : "none",
+        outline:
+          !isPreview && isDragging && element._overlapping
+            ? "2px solid #ef4444"
+            : !isPreview && isSelected
+              ? "2px solid #3b82f6"
+              : "none",
         outlineOffset: "1px",
         transition: isDragging ? "none" : "outline 0.1s",
         pointerEvents: isPreview ? "none" : "auto",
@@ -571,8 +582,8 @@ export function CanvasElementComponent({
       onDoubleClick={handleDoubleClick}
       onDragOver={(e) => {
         // Allow drop from element library - must preventDefault for drop to fire
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'copy'
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
         // Let it bubble up to the canvas
       }}
       onDrop={() => {
@@ -580,7 +591,13 @@ export function CanvasElementComponent({
         // (do NOT stopPropagation here)
       }}
     >
-      <ElementContentRenderer element={element} isEditing={isEditing} editRef={editRef} handleEditBlur={handleEditBlur} editor={editor} />
+      <ElementContentRenderer
+        element={element}
+        isEditing={isEditing}
+        editRef={editRef}
+        handleEditBlur={handleEditBlur}
+        editor={editor}
+      />
 
       {isEditing && isText && (
         <div
@@ -592,9 +609,7 @@ export function CanvasElementComponent({
         />
       )}
 
-      {isEditing && (
-        <div style={{ display: "none" }} onBlur={handleEditBlur} />
-      )}
+      {isEditing && <div style={{ display: "none" }} onBlur={handleEditBlur} />}
 
       {isSelected && !isEditing && (
         <>
