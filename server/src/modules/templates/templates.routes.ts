@@ -66,7 +66,7 @@ router.delete(
       const template = await Template.findById(req.params.id);
       if (!template) return sendError(res, "Template not found", 404);
       if (req.user!.role === "FORM_BUILDER" && template.createdBy.toString() !== req.user!.id) {
-         return sendError(res, "Unauthorized", 403);
+        return sendError(res, "Unauthorized", 403);
       }
       await template.deleteOne();
       return sendSuccess(res, null, "Template deleted");

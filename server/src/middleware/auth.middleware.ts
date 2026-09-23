@@ -1,4 +1,4 @@
-﻿import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "@/config";
 
@@ -40,7 +40,7 @@ export const authorize = (...roles: string[]) => {
     if (!req.user || !roles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
-        message: "Forbidden: Insufficient permissions",
+        message: `Forbidden: role=${req.user?.role} expected=${roles.join(",")}`,
       });
       return;
     }
