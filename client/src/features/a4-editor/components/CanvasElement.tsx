@@ -86,13 +86,19 @@ const RESIZE_HANDLES: { dir: ResizeDirection; style: React.CSSProperties }[] = [
   },
 ];
 
-function renderElementContent(
+function ElementContentRenderer({
+  element,
+  isEditing,
+  editRef,
+  handleEditBlur,
+  editor
+}: {
   element: CanvasElement,
   isEditing: boolean,
   editRef: React.RefObject<HTMLDivElement | null>,
   handleEditBlur: () => void,
   editor: any
-) {
+}) {
   const s = element.style;
   const textStyle: React.CSSProperties = {
     fontSize: s.fontSize,
@@ -222,7 +228,7 @@ function renderElementContent(
           gap: 4,
         }}
       >
-        <span style={{ fontSize: 24 }}>ðŸ–¼</span>
+        <span style={{ fontSize: 24 }}>Ã°Å¸â€“Â¼</span>
         <span>{element.content}</span>
       </div>
     );
@@ -574,7 +580,7 @@ export function CanvasElementComponent({
         // (do NOT stopPropagation here)
       }}
     >
-      {renderElementContent(element, isEditing, editRef, handleEditBlur, editor)}
+      <ElementContentRenderer element={element} isEditing={isEditing} editRef={editRef} handleEditBlur={handleEditBlur} editor={editor} />
 
       {isEditing && isText && (
         <div
@@ -586,7 +592,7 @@ export function CanvasElementComponent({
         />
       )}
 
-      {isEditing && editRef.current && (
+      {isEditing && (
         <div style={{ display: "none" }} onBlur={handleEditBlur} />
       )}
 

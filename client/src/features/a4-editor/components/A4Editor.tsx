@@ -80,14 +80,13 @@ export function A4Editor({
   
   // Need to update lastSavedElements if initialElements changes after fetch
   useEffect(() => {
-    setLastSavedElements(initialElements);
+    setTimeout(() => setLastSavedElements(initialElements), 0);
   }, [initialElements]);
 
   useEffect(() => {
-    setLastSavedName(templateName);
+    setTimeout(() => setLastSavedName(templateName), 0);
   }, [templateName]);
 
-  // Strip transient _overlapping flag before comparing â€” it's not a real change
   const stripTransient = (els: any[]) =>
     els.map(({ _overlapping, ...rest }: any) => rest)
 
@@ -95,6 +94,23 @@ export function A4Editor({
     name !== lastSavedName ||
     JSON.stringify(stripTransient(editor.elements)) !== JSON.stringify(stripTransient(lastSavedElements))
 
+
+  const handleSave = useCallback(async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave(editor.elements, name);
+      setLastSavedElements(editor.elements);
+      setLastSavedName(name);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [editor.elements, name, onSave]);
+
+  const handleSelectTemplate = (template: FormTemplate) => {
+    setName(template.name);
+    editor.loadTemplate(template.elements);
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -136,24 +152,7 @@ export function A4Editor({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editor]);
-
-  const handleSelectTemplate = (template: FormTemplate) => {
-    setName(template.name);
-    editor.loadTemplate(template.elements);
-  };
-
-  const handleSave = useCallback(async () => {
-    if (!onSave) return;
-    setIsSaving(true);
-    try {
-      await onSave(editor.elements, name);
-      setLastSavedElements(editor.elements);
-      setLastSavedName(name);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [editor.elements, name, onSave]);
+  }, [editor, handleSave]);
 
   const handleExportPDF = async () => {
     if (!canvasRef.current) return;
@@ -268,7 +267,7 @@ export function A4Editor({
             placeholder="Form name..."
           />
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded-md border border-gray-200 text-xs text-gray-600 font-medium">
-            ðŸ“„ {totalPages} Page{totalPages > 1 ? 's' : ''}
+            ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ {totalPages} Page{totalPages > 1 ? 's' : ''}
           </div>
         </div>
 
@@ -334,16 +333,16 @@ export function A4Editor({
         {onSave && (
           <button
             onClick={handleSave}
-            disabled={!isDirty || isSaving || !!(formStatus && formStatus !== "DRAFT")}
+            disabled={!isDirty || isSaving || (formStatus !== undefined && formStatus !== "DRAFT")}
             title={
               formStatus && formStatus !== "DRAFT"
-                ? `Cannot save â€” form is ${formStatus}`
+                ? `Cannot save ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â form is ${formStatus}`
                 : isDirty
                 ? "You have unsaved changes"
                 : "No changes to save"
             }
             className={`relative flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg transition-all ${
-              !!(formStatus && formStatus !== "DRAFT")
+              (formStatus && formStatus !== "DRAFT")
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : !isDirty || isSaving
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -407,13 +406,13 @@ export function A4Editor({
               onClick={handleExportPDF}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
             >
-              ðŸ“„ Export PDF
+              ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ Export PDF
             </button>
             <button
               onClick={handlePrint}
               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
             >
-              ðŸ–¨ Print
+              ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¨ Print
             </button>
           </div>
         </div>
@@ -466,7 +465,7 @@ export function A4Editor({
             </div>
           </div>
           
-          {/* Add Page Button (Floating) â€” hidden in preview mode */}
+          {/* Add Page Button (Floating) ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â hidden in preview mode */}
           {!isPreview && (
           <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
             <button 
@@ -504,7 +503,7 @@ export function A4Editor({
               onClick={() => setShowShortcuts(false)}
               className="text-gray-400 hover:text-gray-600"
             >
-              âœ•
+              ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢
             </button>
           </div>
           {[

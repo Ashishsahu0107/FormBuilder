@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => localStorage.removeItem("token"))
         .finally(() => setIsLoading(false));
     } else {
-      setIsLoading(false);
+      setTimeout(() => setIsLoading(false), 0);
     }
   }, []);
 
