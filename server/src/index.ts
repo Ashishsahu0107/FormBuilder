@@ -68,7 +68,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/forms", formsRoutes);
+app.use("/api/forms", (req, res, next) => { console.log("Incoming /api/forms request", req.method, req.url, "Auth:", req.headers.authorization); next(); }, formsRoutes);
 app.use("/api/forms", versionsRoutes); // nested: /api/forms/:id/versions
 app.use("/api/forms", workflowRoutes);
 app.use("/api/forms/:id/submissions", submissionsRoutes);

@@ -135,9 +135,9 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
     if (
       req.user!.role !== "ADMIN" &&
       req.user!.role !== "SUPER_ADMIN" &&
-      form.createdBy.toString() !== req.user!.id
+      ((form.createdBy as any)._id || form.createdBy).toString() !== req.user!.id
     ) {
-      return sendError(res, "Unauthorized to view this form", 403);
+      console.log("403 Triggered", { createdBy: form.createdBy, reqUserId: req.user!.id, createdById: (form.createdBy as any)._id, stringMatch: ((form.createdBy as any)._id || form.createdBy).toString() === req.user!.id }); return sendError(res, `Unauthorized: reqUser=${req.user!.id} formUser=${String((form.createdBy as any).id || (form.createdBy as any)._id || form.createdBy)}`, 403);
     }
 
     return sendSuccess(res, form);
@@ -160,7 +160,7 @@ router.patch(
       if (
         req.user!.role !== "ADMIN" &&
         req.user!.role !== "SUPER_ADMIN" &&
-        form.createdBy.toString() !== req.user!.id
+        ((form.createdBy as any)._id || form.createdBy).toString() !== req.user!.id
       ) {
         return sendError(res, "Unauthorized to edit this form", 403);
       }
@@ -185,7 +185,7 @@ router.delete("/:id", authenticate, async (req: AuthRequest, res: Response) => {
     if (
       req.user!.role !== "ADMIN" &&
       req.user!.role !== "SUPER_ADMIN" &&
-      form.createdBy.toString() !== req.user!.id
+      ((form.createdBy as any)._id || form.createdBy).toString() !== req.user!.id
     ) {
       return sendError(res, "Unauthorized to delete this form", 403);
     }

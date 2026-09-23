@@ -26,7 +26,7 @@ router.get(
         req.user!.role !== "SUPER_ADMIN" &&
         form.createdBy.toString() !== req.user!.id
       ) {
-        return sendError(res, "Unauthorized", 403);
+        return sendError(res, `Unauthorized: reqId=${req.user!.id} formOwner=${form.createdBy.toString()}`, 403);
       }
 
       const versions = await FormVersion.find({ formId: req.params.id })
@@ -55,7 +55,7 @@ router.post(
         req.user!.role !== "SUPER_ADMIN" &&
         form.createdBy.toString() !== req.user!.id
       ) {
-        return sendError(res, "Unauthorized", 403);
+        return sendError(res, `Unauthorized: reqId=${req.user!.id} formOwner=${form.createdBy.toString()}`, 403);
       }
 
       const latestVersion = await FormVersion.findOne({ formId: form.id }).sort(
@@ -98,7 +98,7 @@ router.get(
         req.user!.role !== "SUPER_ADMIN" &&
         form.createdBy.toString() !== req.user!.id
       ) {
-        return sendError(res, "Unauthorized", 403);
+        return sendError(res, `Unauthorized: reqId=${req.user!.id} formOwner=${form.createdBy.toString()}`, 403);
       }
 
       const version = await FormVersion.findOne({
@@ -130,7 +130,7 @@ router.patch(
         req.user!.role !== "SUPER_ADMIN" &&
         form.createdBy.toString() !== req.user!.id
       ) {
-        return sendError(res, "Unauthorized", 403);
+        return sendError(res, `Unauthorized: reqId=${req.user!.id} formOwner=${form.createdBy.toString()}`, 403);
       }
 
       const version = await FormVersion.findOne({
