@@ -37,11 +37,11 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/templates (Admin only)
+// POST /api/templates
 router.post(
   "/",
   authenticate,
-  authorize("SUPER_ADMIN", "ADMIN"),
+  authorize("SUPER_ADMIN", "ADMIN", "FORM_BUILDER"),
   validate(createTemplateSchema),
   async (req: AuthRequest, res: Response) => {
     try {
@@ -56,15 +56,19 @@ router.post(
   },
 );
 
-// DELETE /api/templates/:id (Admin only)
+// DELETE /api/templates/:id
 router.delete(
   "/:id",
   authenticate,
-  authorize("SUPER_ADMIN", "ADMIN"),
+  authorize("SUPER_ADMIN", "ADMIN", "FORM_BUILDER"),
   async (req: AuthRequest, res: Response) => {
     try {
-      const template = await Template.findByIdAndDelete(req.params.id);
+      const template = await Template.findById(req.params.id);
       if (!template) return sendError(res, "Template not found", 404);
+      if (req.user!.role === "FORM_BUILDER" && template.createdBy.toString() !== req.user!.id) {
+         return sendError(res, "Unauthorized", 403);
+      }
+      await template.deleteOne();
       return sendSuccess(res, null, "Template deleted");
     } catch (error) {
       return sendError(res, "Failed to delete template");
