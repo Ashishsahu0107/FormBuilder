@@ -72,7 +72,7 @@ router.post(
 router.post(
   "/:id/approve",
   authenticate,
-  authorize("", "", ""),
+  authorize("SUPER_ADMIN", "ADMIN", "APPROVER"),
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await Form.findOne({ _id: req.params.id, deletedAt: null });
@@ -110,7 +110,7 @@ router.post(
 router.post(
   "/:id/reject",
   authenticate,
-  authorize("", "", ""),
+  authorize("SUPER_ADMIN", "ADMIN", "APPROVER"),
   async (req: AuthRequest, res: Response) => {
     try {
       if (!req.body.comment)
@@ -150,7 +150,7 @@ router.post(
 router.post(
   "/:id/publish",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await Form.findOne({ _id: req.params.id, deletedAt: null });
@@ -180,7 +180,7 @@ router.post(
 router.post(
   "/:id/activate",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await Form.findOne({ _id: req.params.id, deletedAt: null });
@@ -207,7 +207,7 @@ router.post(
 router.post(
   "/:id/deactivate",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await Form.findOne({ _id: req.params.id, deletedAt: null });
@@ -230,7 +230,7 @@ router.post(
 router.post(
   "/:id/archive",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   async (req: AuthRequest, res: Response) => {
     try {
       const form = await Form.findOne({ _id: req.params.id, deletedAt: null });

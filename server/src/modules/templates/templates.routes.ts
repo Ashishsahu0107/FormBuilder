@@ -41,7 +41,7 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
 router.post(
   "/",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   validate(createTemplateSchema),
   async (req: AuthRequest, res: Response) => {
     try {
@@ -60,7 +60,7 @@ router.post(
 router.delete(
   "/:id",
   authenticate,
-  authorize("", ""),
+  authorize("SUPER_ADMIN", "ADMIN"),
   async (req: AuthRequest, res: Response) => {
     try {
       const template = await Template.findByIdAndDelete(req.params.id);
