@@ -100,23 +100,6 @@ router.get("/export", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// GET /api/forms/:id/submissions/:subId
-router.get("/:subId", authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const formId = req.params.id as string;
-    const form = await verifyFormAccess(formId, req.user!.id, req.user!.role);
-    if (!form) return sendError(res, "Form not found or access denied", 404);
-
-    const submission = await Submission.findById(req.params.subId as string);
-    if (!submission) return sendError(res, "Submission not found", 404);
-
-    return sendSuccess(res, submission);
-  } catch (error) {
-    console.error("Fetch submission error:", error);
-    return sendError(res, "Failed to fetch submission");
-  }
-});
-
 // GET /api/forms/:id/analytics
 router.get(
   "/analytics",
@@ -162,5 +145,24 @@ router.get(
     }
   },
 );
+
+// GET /api/forms/:id/submissions/:subId
+router.get("/:subId", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const formId = req.params.id as string;
+    const form = await verifyFormAccess(formId, req.user!.id, req.user!.role);
+    if (!form) return sendError(res, "Form not found or access denied", 404);
+
+    const submission = await Submission.findById(req.params.subId as string);
+    if (!submission) return sendError(res, "Submission not found", 404);
+
+    return sendSuccess(res, submission);
+  } catch (error) {
+    console.error("Fetch submission error:", error);
+    return sendError(res, "Failed to fetch submission");
+  }
+});
+
+
 
 export default router;
