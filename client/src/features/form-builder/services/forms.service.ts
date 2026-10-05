@@ -62,7 +62,7 @@ export const formsService = {
   submitForReview: (formId: string) =>
     api.post(`/forms/${formId}/submit-review`),
 
-  approve: (formId: string) => api.patch(`/forms/${formId}/approve`),
+  approve: (formId: string) => api.post(`/forms/${formId}/approve`),
 
   reject: (formId: string, comment: string) =>
     api.post(`/forms/${formId}/reject`, { comment }),
