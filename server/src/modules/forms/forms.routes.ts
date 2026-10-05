@@ -24,12 +24,87 @@ const updateFormSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+const buildFormSchema = (form: any, input: any = {}) => {
+  const source =
+    input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const settings =
+    source.settings && typeof source.settings === "object"
+      ? source.settings
+      : {};
+
+  return {
+    ...source,
+    id: source.id || uuidv4(),
+    version: source.version || 1,
+    title: source.title || form.title,
+    description: source.description || form.description || "",
+    paperSize: source.paperSize || "A4",
+    elements: Array.isArray(source.elements) ? source.elements : [],
+    settings: {
+      submitButtonText: "Submit",
+      successMessage: "Thank you for your submission!",
+      isMultiStep: false,
+      ...settings,
+    },
+    sections: Array.isArray(source.sections)
+      ? source.sections
+      : [{ id: uuidv4(), title: "", fields: [] }],
+    logic: Array.isArray(source.logic) ? source.logic : [],
+  };
+};
+
+const ensureCurrentVersion = async (form: any, userId: string) => {
+  let version = form.currentVersionId
+    ? await FormVersion.findOne({
+        _id: form.currentVersionId,
+        formId: form.id,
+      })
+    : null;
+
+  if (!version) {
+    version = await FormVersion.findOne({ formId: form.id }).sort({
+      versionNumber: -1,
+    });
+  }
+
+  if (!version) {
+    try {
+      version = await FormVersion.create({
+        formId: form.id,
+        versionNumber: 1,
+        createdBy: userId,
+        schema: buildFormSchema(form),
+      });
+    } catch (error) {
+      // A concurrent request may have created the initial version first.
+      version = await FormVersion.findOne({ formId: form.id }).sort({
+        versionNumber: -1,
+      });
+      if (!version) throw error;
+    }
+  } else {
+    const normalizedSchema = buildFormSchema(form, version.schema);
+    if (JSON.stringify(version.schema) !== JSON.stringify(normalizedSchema)) {
+      version.schema = normalizedSchema;
+      await version.save();
+    }
+  }
+
+  if (form.currentVersionId !== version.id) {
+    form.currentVersionId = version.id;
+    await form.save();
+  }
+
+  return version;
+};
+
 // --- POST /api/forms ---
 router.post(
   "/",
   authenticate,
   validate(createFormSchema),
   async (req: AuthRequest, res: Response) => {
+    let createdFormId: string | undefined;
     try {
       const { title, description, category, schema } = req.body;
 
@@ -51,43 +126,35 @@ router.post(
         category,
         createdBy: req.user!.id,
       });
+      createdFormId = form.id;
 
       // Create Initial Draft Version
       const version = await FormVersion.create({
         formId: form.id,
         versionNumber: 1,
         createdBy: req.user!.id,
-        schema: {
-          ...schema,
-          id: schema?.id || uuidv4(),
-          version: schema?.version || 1,
-          title: schema?.title || title,
-          description: schema?.description || description || "",
-          paperSize: schema?.paperSize || "A4",
-          elements: Array.isArray(schema?.elements) ? schema.elements : [],
-          settings: {
-            submitButtonText: "Submit",
-            successMessage: "Thank you for your submission!",
-            isMultiStep: false,
-            ...schema?.settings,
-          },
-          sections: schema?.sections || [
-            { id: uuidv4(), title: "", fields: [] },
-          ],
-          logic: schema?.logic || [],
-        },
+        schema: buildFormSchema(form, schema),
       });
 
-      // Update form with current version
-      await Form.findByIdAndUpdate(form.id, { currentVersionId: version.id });
+      form.currentVersionId = version.id;
+      await form.save();
 
-      const updatedForm = await Form.findById(form.id).populate(
-        "currentVersionId",
+      return sendSuccess(
+        res,
+        { ...form.toJSON(), currentVersionId: version.id, currentVersion: version },
+        "Form created successfully",
+        201,
       );
-
-      return sendSuccess(res, updatedForm, "Form created successfully", 201);
     } catch (error) {
       console.error("[POST /forms]", error);
+      if (createdFormId) {
+        try {
+          await FormVersion.deleteMany({ formId: createdFormId });
+          await Form.findByIdAndDelete(createdFormId);
+        } catch (cleanupError) {
+          console.error("[POST /forms] cleanup failed", cleanupError);
+        }
+      }
       return sendError(res, "Failed to create form");
     }
   },
@@ -133,8 +200,7 @@ router.get("/", authenticate, async (req: AuthRequest, res: Response) => {
 router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const form = await Form.findOne({ _id: req.params.id, deletedAt: null })
-      .populate("createdBy", "name email")
-      .populate("currentVersionId");
+      .populate("createdBy", "name email");
 
     if (!form) return sendError(res, "Form not found", 404);
 
@@ -144,10 +210,15 @@ router.get("/:id", authenticate, async (req: AuthRequest, res: Response) => {
       req.user!.role !== "SUPER_ADMIN" &&
       ((form.createdBy as any)._id || form.createdBy).toString() !== req.user!.id
     ) {
-      console.log("403 Triggered", { createdBy: form.createdBy, reqUserId: req.user!.id, createdById: (form.createdBy as any)._id, stringMatch: ((form.createdBy as any)._id || form.createdBy).toString() === req.user!.id }); return sendError(res, `Unauthorized: reqUser=${req.user!.id} formUser=${String((form.createdBy as any).id || (form.createdBy as any)._id || form.createdBy)}`, 403);
+      return sendError(res, "Unauthorized to view this form", 403);
     }
 
-    return sendSuccess(res, form);
+    const currentVersion = await ensureCurrentVersion(form, req.user!.id);
+    return sendSuccess(res, {
+      ...form.toJSON(),
+      currentVersionId: currentVersion.id,
+      currentVersion,
+    });
   } catch (error) {
     console.error("[GET /forms/:id]", error);
     return sendError(res, "Failed to fetch form");

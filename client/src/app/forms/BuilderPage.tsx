@@ -19,25 +19,39 @@ export function BuilderPage() {
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(false);
 
   useEffect(() => {
+    let isCurrentRequest = true;
+    setLoading(true);
+    setError("");
+    setForm(null);
+    setSchema(null);
+
     async function loadForm() {
-      if (!id) return;
+      if (!id) {
+        setError("Form not found");
+        setLoading(false);
+        return;
+      }
       try {
         const res = await formsService.getById(id);
         const loadedForm = res.data.data;
-        setForm(loadedForm);
-        const currentVersion =
-          loadedForm.currentVersion ??
-          (typeof loadedForm.currentVersionId === "object"
-            ? loadedForm.currentVersionId
-            : undefined);
-        if (currentVersion) setSchema(currentVersion.schema);
+        if (!loadedForm.currentVersion?.schema) {
+          throw new Error("Form has no valid current version");
+        }
+        if (isCurrentRequest) {
+          setForm(loadedForm);
+          setSchema(loadedForm.currentVersion.schema);
+        }
       } catch {
-        setError("Failed to load form");
+        if (isCurrentRequest) setError("Failed to load form");
       } finally {
-        setLoading(false);
+        if (isCurrentRequest) setLoading(false);
       }
     }
     loadForm();
+
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [id]);
 
   const handleWorkflowAction = async (
@@ -63,7 +77,11 @@ export function BuilderPage() {
   };
 
   const handleSave = async (elements: any[], name: string) => {
-    if (!form || !form.currentVersionId) return;
+    if (!form) return;
+    if (!form.currentVersionId) {
+      toast.error("Form version could not be loaded");
+      throw new Error("Form version could not be loaded");
+    }
     const title = name.trim();
     if (!title) {
       toast.error("Form title is required");
@@ -71,11 +89,11 @@ export function BuilderPage() {
     }
     try {
       const newSchema = { ...schema, elements, title };
-      const versionId =
-        typeof form.currentVersionId === "string"
-          ? form.currentVersionId
-          : form.currentVersionId.id;
-      await formsService.saveSchema(form.id, versionId, newSchema);
+      await formsService.saveSchema(
+        form.id,
+        form.currentVersionId,
+        newSchema,
+      );
       // Update form name if changed
       if (title !== form.title) {
         await formsService.update(form.id, { title });

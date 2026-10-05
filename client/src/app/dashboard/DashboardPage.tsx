@@ -118,7 +118,7 @@ export function DashboardPage() {
     try {
       await formsService.approve(formId);
       toast.success("Form approved successfully!");
-      refetch();
+      await queryClient.invalidateQueries({ queryKey: ["forms"] });
     } catch (err) {
       console.error(err);
       toast.error("Failed to approve form");
