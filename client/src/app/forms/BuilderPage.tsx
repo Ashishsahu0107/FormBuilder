@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { formsService } from "@/features/form-builder/services/forms.service";
 import { A4Editor } from "@/features/a4-editor/components/A4Editor";
@@ -10,6 +11,7 @@ import type { PaperSize } from "@/features/a4-editor/types/element";
 export function BuilderPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
   const [schema, setSchema] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -21,10 +23,14 @@ export function BuilderPage() {
       if (!id) return;
       try {
         const res = await formsService.getById(id);
-        setForm(res.data.data);
-        if (res.data.data.currentVersion) {
-          setSchema(res.data.data.currentVersion.schema);
-        }
+        const loadedForm = res.data.data;
+        setForm(loadedForm);
+        const currentVersion =
+          loadedForm.currentVersion ??
+          (typeof loadedForm.currentVersionId === "object"
+            ? loadedForm.currentVersionId
+            : undefined);
+        if (currentVersion) setSchema(currentVersion.schema);
       } catch {
         setError("Failed to load form");
       } finally {
@@ -58,13 +64,24 @@ export function BuilderPage() {
 
   const handleSave = async (elements: any[], name: string) => {
     if (!form || !form.currentVersionId) return;
+    const title = name.trim();
+    if (!title) {
+      toast.error("Form title is required");
+      throw new Error("Form title is required");
+    }
     try {
-      const newSchema = { ...schema, elements };
-      await formsService.saveSchema(form.id, form.currentVersionId, newSchema);
+      const newSchema = { ...schema, elements, title };
+      const versionId =
+        typeof form.currentVersionId === "string"
+          ? form.currentVersionId
+          : form.currentVersionId.id;
+      await formsService.saveSchema(form.id, versionId, newSchema);
       // Update form name if changed
-      if (name !== form.title) {
-        await formsService.update(form.id, { title: name });
+      if (title !== form.title) {
+        await formsService.update(form.id, { title });
+        setForm({ ...form, title });
       }
+      await queryClient.invalidateQueries({ queryKey: ["forms"] });
       toast.success("Form saved successfully!");
     } catch (err: any) {
       console.error(err);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formsService } from "@/features/form-builder/services/forms.service";
 import { templatesService } from "@/features/templates/services/templates.service";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -34,6 +34,7 @@ import { toast } from "react-hot-toast";
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -55,7 +56,7 @@ export function DashboardPage() {
   const isAdminView =
     user?.role === "ADMIN" && ["PENDING", "APPROVED"].includes(statusFilter);
 
-  const { data, refetch } = useQuery({
+  const { data } = useQuery({
     queryKey: ["forms", statusFilter, user?.id],
     queryFn: () => {
       const params: any = {};
@@ -77,29 +78,40 @@ export function DashboardPage() {
         title: template.title + " (Copy)",
         schema: template.schema,
       });
+      await queryClient.invalidateQueries({ queryKey: ["forms"] });
       navigate(`/forms/${res.data.data.id}/builder`);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to create form from template");
     }
   };
 
   const handleCreate = async () => {
-    if (!newTitle) return;
+    const title = newTitle.trim();
+    if (!title) return;
     try {
       const res = await formsService.create({
-        title: newTitle,
+        title,
         schema: { paperSize, elements: [] },
       });
+      await queryClient.invalidateQueries({ queryKey: ["forms"] });
       setIsCreateOpen(false);
       navigate(`/forms/${res.data.data.id}/builder`);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to create form");
     }
   };
 
   const handleDelete = async (formId: string) => {
-    await formsService.delete(formId);
-    refetch();
+    try {
+      await formsService.delete(formId);
+      await queryClient.invalidateQueries({ queryKey: ["forms"] });
+      toast.success("Form deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete form");
+    }
   };
 
   const handleApprove = async (formId: string) => {
@@ -366,10 +378,10 @@ export function DashboardPage() {
                     {isAdminView && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {form.user?.name}
+                          {form.createdBy?.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {form.user?.email}
+                          {form.createdBy?.email}
                         </div>
                       </td>
                     )}

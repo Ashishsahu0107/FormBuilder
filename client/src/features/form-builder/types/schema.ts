@@ -156,7 +156,7 @@ export interface Form {
   description?: string;
   category?: string;
   status: FormStatus;
-  currentVersionId?: string;
+  currentVersionId?: string | FormVersion;
   currentVersion?: FormVersion;
   createdBy: string;
   createdAt: string;

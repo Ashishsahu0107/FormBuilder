@@ -18,9 +18,13 @@ export function PreviewPage() {
       if (!id) return;
       try {
         const res = await formsService.getById(id);
-        if (res.data.data.currentVersion) {
-          setSchema(res.data.data.currentVersion.schema);
-        }
+        const loadedForm = res.data.data;
+        const currentVersion =
+          loadedForm.currentVersion ??
+          (typeof loadedForm.currentVersionId === "object"
+            ? loadedForm.currentVersionId
+            : undefined);
+        if (currentVersion) setSchema(currentVersion.schema);
       } catch (err: any) {
         console.error(err);
       } finally {

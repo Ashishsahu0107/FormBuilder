@@ -14,6 +14,7 @@ const createFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   category: z.string().optional(),
+  schema: z.any().optional(),
 });
 
 const updateFormSchema = z.object({
@@ -30,7 +31,7 @@ router.post(
   validate(createFormSchema),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { title, description, category } = req.body;
+      const { title, description, category, schema } = req.body;
 
       // Generate unique slug
       let baseSlug = slugify(title, { lower: true, strict: true });
@@ -57,17 +58,23 @@ router.post(
         versionNumber: 1,
         createdBy: req.user!.id,
         schema: {
-          id: uuidv4(),
-          version: 1,
-          title,
-          description: description || "",
+          ...schema,
+          id: schema?.id || uuidv4(),
+          version: schema?.version || 1,
+          title: schema?.title || title,
+          description: schema?.description || description || "",
+          paperSize: schema?.paperSize || "A4",
+          elements: Array.isArray(schema?.elements) ? schema.elements : [],
           settings: {
             submitButtonText: "Submit",
             successMessage: "Thank you for your submission!",
             isMultiStep: false,
+            ...schema?.settings,
           },
-          sections: [{ id: uuidv4(), title: "", fields: [] }],
-          logic: [],
+          sections: schema?.sections || [
+            { id: uuidv4(), title: "", fields: [] },
+          ],
+          logic: schema?.logic || [],
         },
       });
 
