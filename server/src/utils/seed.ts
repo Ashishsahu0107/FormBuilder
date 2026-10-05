@@ -1,6 +1,7 @@
-import mongoose from "mongoose";
+import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { User } from "@/models/User.model";
+import { connectMongoDB, disconnectMongoDB } from "@/config/mongodb";
 
 export async function seedAdmin() {
   try {
@@ -17,5 +18,20 @@ export async function seedAdmin() {
     }
   } catch (err) {
     console.error("Failed to seed admin", err);
+    throw err;
   }
 }
+
+async function runSeed() {
+  await connectMongoDB();
+  try {
+    await seedAdmin();
+  } finally {
+    await disconnectMongoDB();
+  }
+}
+
+runSeed().catch((error) => {
+  console.error("Seed command failed", error);
+  process.exitCode = 1;
+});
