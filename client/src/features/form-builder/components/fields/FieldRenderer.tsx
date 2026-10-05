@@ -296,7 +296,7 @@ export function FieldRenderer({
                 onClick={() => onChange?.(i + 1)}
                 className={`text-2xl ${i < ratingVal ? "text-yellow-400" : "text-gray-300"} hover:text-yellow-400 transition-colors`}
               >
-                ÃƒÆ’Ã‚Â¢Ãƒâ€¹Ã…â€œÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦
+                *
               </button>
             ))}
           </div>

@@ -242,7 +242,7 @@ export function DashboardPage() {
                             A4
                           </h4>
                           <div className="text-xs text-gray-500 space-y-0.5">
-                            <p>210 Ãƒâ€” 297 mm</p>
+                            <p>210 x 297 mm</p>
                             <p>Standard size, widely used</p>
                           </div>
                         </div>
@@ -280,7 +280,7 @@ export function DashboardPage() {
                             A3
                           </h4>
                           <div className="text-xs text-gray-500 space-y-0.5">
-                            <p>297 Ãƒâ€” 420 mm</p>
+                            <p>297 x 420 mm</p>
                             <p>Larger space for detailed forms</p>
                           </div>
                         </div>

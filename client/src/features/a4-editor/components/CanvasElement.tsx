@@ -228,7 +228,7 @@ function ElementContentRenderer({
           gap: 4,
         }}
       >
-        <span style={{ fontSize: 24 }}>Ã°Å¸â€“Â¼</span>
+        <span style={{ fontSize: 24 }}>Image</span>
         <span>{element.content}</span>
       </div>
     );

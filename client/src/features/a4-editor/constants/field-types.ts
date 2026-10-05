@@ -33,7 +33,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "paragraph",
     label: "Paragraph",
-    icon: "Â¶",
+    icon: "P",
     defaultContent: "Add your description here...",
     defaultWidth: 698,
     defaultHeight: 60,
@@ -42,7 +42,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_divider",
     label: "Divider",
-    icon: "â€”",
+    icon: "-",
     defaultContent: "",
     defaultWidth: 698,
     defaultHeight: 16,
@@ -52,7 +52,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_name",
     label: "Name",
-    icon: "ðŸ‘¤",
+    icon: "N",
     defaultContent: "Full Name",
     defaultWidth: 320,
     defaultHeight: 60,
@@ -61,7 +61,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_email",
     label: "Email",
-    icon: "âœ‰",
+    icon: "@",
     defaultContent: "Email Address",
     defaultWidth: 320,
     defaultHeight: 60,
@@ -70,7 +70,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_phone",
     label: "Phone",
-    icon: "ðŸ“ž",
+    icon: "Tel",
     defaultContent: "Phone Number",
     defaultWidth: 320,
     defaultHeight: 60,
@@ -88,7 +88,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_address",
     label: "Address",
-    icon: "ðŸ“",
+    icon: "A",
     defaultContent: "Address",
     defaultWidth: 698,
     defaultHeight: 80,
@@ -97,7 +97,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_date",
     label: "Date",
-    icon: "ðŸ“…",
+    icon: "D",
     defaultContent: "Date",
     defaultWidth: 200,
     defaultHeight: 60,
@@ -106,7 +106,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_textarea",
     label: "Text Area",
-    icon: "âœ",
+    icon: "Txt",
     defaultContent: "Message",
     defaultWidth: 698,
     defaultHeight: 100,
@@ -115,7 +115,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_checkbox",
     label: "Checkbox",
-    icon: "â˜‘",
+    icon: "[ ]",
     defaultContent: "I agree to the terms and conditions",
     defaultWidth: 400,
     defaultHeight: 32,
@@ -124,7 +124,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_dropdown",
     label: "Dropdown",
-    icon: "â–¼",
+    icon: "v",
     defaultContent: "Select option",
     defaultWidth: 320,
     defaultHeight: 60,
@@ -133,7 +133,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_signature",
     label: "Signature",
-    icon: "âœ",
+    icon: "Sign",
     defaultContent: "Signature",
     defaultWidth: 320,
     defaultHeight: 80,
@@ -142,7 +142,7 @@ export const FIELD_LIBRARY: FieldLibraryItem[] = [
   {
     type: "field_image_placeholder",
     label: "Image / Logo",
-    icon: "ðŸ–¼",
+    icon: "Img",
     defaultContent: "Logo / Image",
     defaultWidth: 160,
     defaultHeight: 100,

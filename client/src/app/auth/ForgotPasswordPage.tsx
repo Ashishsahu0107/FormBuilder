@@ -242,7 +242,7 @@ export function ForgotPasswordPage() {
                     <Input
                       id="password"
                       type="password"
-                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                      placeholder="Enter new password"
                       minLength={4}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -256,7 +256,7 @@ export function ForgotPasswordPage() {
                     <Input
                       id="confirmPassword"
                       type="password"
-                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                      placeholder="Confirm password"
                       minLength={4}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
